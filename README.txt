@@ -1,0 +1,93 @@
+﻿Ragnarok 安裝管理中心 v6.0.3 精裝版
+
+啟動方式
+1. 完整保留本資料夾內的 Config、Modules 與 Logs 目錄。
+2. 雙擊 Start.cmd。
+3. 接受 Windows 系統管理員權限提示。
+
+主要路徑
+- 安裝根目錄：C:\Server
+- rAthena：C:\Server\rAthena
+- PandasWS：C:\Server\PandasWS
+- WARP：C:\Server\WARP0716
+- ROenglishRE：C:\Server\ROenglishRE
+- NPC 中文化：C:\Server\rathena-npc-big5
+
+主選單
+[1] 安裝 / 更新開發環境
+[2] 安裝 / 更新 MariaDB
+[3] 更新 rAthena / PandasWS
+[4] 編譯目前核心
+[5] 清除後重新編譯目前核心
+[6] 更新 WARP
+[7] 建立 / 匯入資料庫
+[8] 初始化 rAthena 設定
+[9] 顯示系統資訊
+[A] 開啟 Logs
+[L] 清除 Logs
+[B] 全部移除
+[C] 啟動伺服器
+[H] 停止伺服器
+[D] 更新 ROenglishRE
+[E] 更新 NPC 腳本中文化
+[F] 套用中文化
+[G] 一鍵初始化（不自動啟動）
+[0] 離開
+
+開發與執行環境
+- Git、CMake、Ninja、7-Zip。
+- Visual Studio 2022 Build Tools、MSVC v143 與 Windows SDK。
+- Visual C++ 2012 x64 Runtime；rAthena 的 pcre8.dll 需要 MSVCR110.dll。
+- MariaDB 使用 mariadb.install；損壞安裝會先備份並移開舊 data，再使用 MSI 乾淨修復。
+
+編譯方式
+- 使用 rAthena 官方 rAthena.sln。
+- Visual Studio 2022 MSBuild，Release | x64。
+- 執行 Build 或 Rebuild，不使用自訂 build 資料夾。
+- login-server.exe、char-server.exe、map-server.exe、web-server.exe 位於 C:\Server\rAthena。
+- 編譯畫面會持續顯示 MSBuild PID、耗時及編譯／連結狀態。
+
+MariaDB 與資料庫
+- 主要資料庫：rathenadb
+- 紀錄資料庫：rathenalog
+- 字元集：utf8mb4
+- 排序規則：utf8mb4_unicode_520_ci
+- 伺服器資料庫帳號：rathenadbusr
+- 伺服器資料庫密碼：froggopass
+- 伺服器通訊帳號：froggos1
+- 伺服器通訊密碼：froggop1
+- GM 帳號：test / test，等級 99
+
+第 7 項說明
+- 空資料庫會依指定順序完整匯入 SQL。
+- 偵測到現有資料時，直接 Enter 會保留資料並略過基礎 SQL，避免 Duplicate entry。
+- 選擇全新重建後仍須輸入 REBUILD，才會清除並重新建立資料庫。
+- 本機 MariaDB 連線使用 --ssl=0，避免無密碼 root 的 SSL 警告。
+
+第 8 項說明
+- conf\import 不存在時，完整複製 conf\import-tmpl。
+- conf\import 已存在時，只補上缺少的範本檔案。
+- 所有 conf\import\*.txt 使用 UTF-8 無 BOM，確保第一行能被 rAthena 正確辨識。
+- 完整寫入資料庫 IP、Port、帳號、密碼及資料庫名稱。
+- 同步設定 char-server 與 map-server 通訊帳密。
+- 確認 account_id=1 為 froggos1 / froggop1 / sex=S。
+- 驗證 inter、char、map、login 主設定均有載入 import 檔。
+- 修改 packets.hpp 的 PACKETVER 為 20260107。
+- 一般 conf 修改只需停止後重新啟動伺服器；PACKETVER 變更則須重新編譯。
+
+WARP
+- Git 來源：https://github.com/CrazyBebop/WARP0716.git
+- 分支：main
+- 下載位置：C:\Server\WARP0716
+- 若偵測到不同 Git 來源，舊資料夾會先加上日期時間備份，再下載正確來源。
+
+啟動伺服器
+- 依序啟動 login-server.exe、char-server.exe、map-server.exe、web-server.exe。
+- 啟動前會檢查 Visual C++ 2012 x64 Runtime，缺少時自動安裝。
+- 修改設定後請先選 [H] 停止伺服器，再選 [C] 重新啟動。
+
+注意事項
+- 不要從不明網站單獨下載 MSVCR110.dll。
+- 不要在伺服器執行中覆蓋 conf 或重新編譯。
+- MariaDB 修復前的舊 data 備份位於 C:\Server\Backups。
+- 執行記錄位於本程式資料夾的 Logs。

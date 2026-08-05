@@ -1,0 +1,47 @@
+﻿{
+    "SchemaVersion":  2,
+    "Emulator":  "rAthena",
+    "RootPath":  "C:\\Server",
+    "RAthenaPath":  "C:\\Server\\rAthena",
+    "PandasWSPath":  "C:\\Server\\PandasWS",
+    "ClientPatchPath":  "C:\\Server\\WARP0716",
+    "ROenglishREPath":  "C:\\Server\\ROenglishRE",
+    "NpcBig5Path":  "C:\\Server\\rathena-npc-big5",
+    "PacketVersion":  20260107,
+    "Repositories":  {
+                         "RAthena":  {
+                                         "Url":  "https://github.com/rathena/rathena.git",
+                                         "Branch":  "master"
+                                     },
+                         "PandasWS":  {
+                                          "Url":  "https://github.com/PandasWS/Pandas.git",
+                                          "Branch":  "master"
+                                      },
+                         "ClientPatch":  {
+                                             "Url":  "https://github.com/CrazyBebop/WARP0716.git",
+                                             "Branch":  "main"
+                                         },
+                         "ROenglishRE":  {
+                                             "Url":  "https://github.com/llchrisll/ROenglishRE.git",
+                                             "Branch":  "master"
+                                         },
+                         "NpcBig5":  {
+                                         "Url":  "https://github.com/xvn5002036/rathena-npc-big5.git",
+                                         "Branch":  "main"
+                                     }
+                     },
+    "Database":  {
+                     "Engine":  "MariaDB",
+                     "HostName":  "127.0.0.1",
+                     "Port":  3306,
+                     "MainDatabase":  "rathenadb",
+                     "LogDatabase":  "rathenalog",
+                     "WebDatabase":  "rathenadb",
+                     "UserName":  "root",
+                     "Password":  "",
+                     "ServerUserName":  "rathenadbusr",
+                     "ServerPassword":  "froggopass",
+                     "CharacterSet":  "utf8mb4",
+                     "Collation":  "utf8mb4_unicode_520_ci"
+                 }
+}
