@@ -6,6 +6,34 @@ function Read-MenuChoice { param([string]$Prompt='請選擇'); return (Read-Host
 function Pause-Console { Write-Host ''; [void](Read-Host '按 Enter 返回主選單') }
 function Open-LogsFolder { Initialize-LogDirectory $script:LogsPath; Start-Process explorer.exe -ArgumentList ('"{0}"' -f $script:LogsPath) }
 function Test-Command { param([string]$Name); return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue) }
+function Get-InstalledPythonVersion {
+ $candidates=@()
+ foreach($candidateName in @('python.exe','py.exe')){$candidates+=@(Get-Command $candidateName -All -ErrorAction SilentlyContinue|ForEach-Object{[pscustomobject]@{Path=$_.Source;Name=$candidateName}})}
+ $directPaths=@('C:\Program Files\Python314\python.exe','C:\Program Files\Python313\python.exe',(Join-Path $env:LOCALAPPDATA 'Programs\Python\Python314\python.exe'),(Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313\python.exe'))
+ foreach($directPath in $directPaths){if(Test-Path -LiteralPath $directPath){$candidates+=[pscustomobject]@{Path=$directPath;Name='python.exe'}}}
+ foreach($candidate in @($candidates|Sort-Object Path -Unique)){
+   if($candidate.Path -match '\\Microsoft\\WindowsApps\\'){continue}
+   $arguments=@(if($candidate.Name -eq 'py.exe'){'-3';'--version'}else{'--version'})
+   $oldPreference=$ErrorActionPreference;$ErrorActionPreference='Continue'
+   try{$output=(& $candidate.Path @arguments 2>&1|Out-String).Trim();$exitCode=$LASTEXITCODE}finally{$ErrorActionPreference=$oldPreference}
+   if($exitCode -eq 0 -and $output -match '^Python\s+\d+\.\d+\.\d+'){
+    return [pscustomobject]@{Version=$output;Path=$candidate.Path}
+   }
+ }
+ return $null
+}
+function Get-CMakeInstallation {
+ $paths=@()
+ $command=Get-Command 'cmake.exe' -ErrorAction SilentlyContinue;if($command){$paths+=$command.Source}
+ $paths+=@('C:\Program Files\CMake\bin\cmake.exe',(Join-Path ${env:ProgramFiles(x86)} 'CMake\bin\cmake.exe'))
+ foreach($path in @($paths|Where-Object{$_}|Select-Object -Unique)){
+  if(-not(Test-Path -LiteralPath $path)){continue}
+  $oldPreference=$ErrorActionPreference;$ErrorActionPreference='Continue'
+  try{$output=(& $path --version 2>&1|Out-String).Trim();$exitCode=$LASTEXITCODE}finally{$ErrorActionPreference=$oldPreference}
+  if($exitCode -eq 0 -and $output -match '(?m)^cmake version\s+[^\r\n]+'){return [pscustomobject]@{Version=$Matches[0];Path=$path}}
+ }
+ return $null
+}
 function Get-MariaDbService {
  $services=Get-CimInstance Win32_Service -ErrorAction SilentlyContinue|Where-Object {
   $_.Name -match 'MariaDB|MySQL' -or $_.DisplayName -match 'MariaDB|MySQL' -or ($_.PathName -match 'mysqld\.exe' -and $_.PathName -match 'MariaDB')

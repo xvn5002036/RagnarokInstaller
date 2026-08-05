@@ -34,6 +34,7 @@ function Show-InstallerConfig {
  $svc=Get-MariaDbService
  if($svc){Write-Host ('MariaDB 服務：{0} / {1}' -f $svc.Name,$svc.State);Write-Host ('啟動類型：{0}' -f $svc.StartMode)}
  else{Write-Host 'MariaDB 服務：未偵測到'}
+ $python=Get-InstalledPythonVersion;if($python){Write-Host ('Python：{0}' -f $python.Version);Write-Host ('Python 路徑：{0}' -f $python.Path)}else{Write-Host 'Python：未安裝'}
  Write-Host ''; Write-Host '伺服器執行檔（核心根目錄）' -ForegroundColor Cyan
  foreach($exeName in @('login-server.exe','char-server.exe','map-server.exe','web-server.exe')){
   $exePath=Join-Path $core.Path $exeName

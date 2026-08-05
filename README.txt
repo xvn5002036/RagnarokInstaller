@@ -35,7 +35,10 @@
 [0] 離開
 
 開發與執行環境
-- Git、CMake、Ninja、7-Zip。
+- Git、CMake、Ninja、7-Zip、Python（先驗證實際版本；損壞時強制修復）。
+- Python 採無人值守安裝；Chocolatey 來源失效時自動改用 Python 官方安裝程式。
+- Python 安裝完成後以非互動模式讀取版本，不會停在 Python 輸入畫面。
+- CMake 不只檢查 Chocolatey 紀錄，必須能正常執行並讀取版本才算安裝完成。
 - Visual Studio 2022 Build Tools、MSVC v143 與 Windows SDK。
 - Visual C++ 2012 x64 Runtime；rAthena 的 pcre8.dll 需要 MSVCR110.dll。
 - MariaDB 使用 mariadb.install；損壞安裝會先備份並移開舊 data，再使用 MSI 乾淨修復。

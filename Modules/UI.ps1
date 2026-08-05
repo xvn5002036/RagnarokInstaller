@@ -3,7 +3,8 @@ function Get-DisplayMark {param([bool]$Value);if($Value){return '[OK]'};return '
 function Show-CompactSystemStatus {
  $core=Get-CoreInfo;$maria=Get-MariaDbService
  Write-Host '【目前狀態】' -ForegroundColor Yellow
- Write-Host ('{0} Git' -f (Get-DisplayMark (Test-Command git)));Write-Host ('{0} CMake' -f (Get-DisplayMark (Test-Command cmake.exe)))
+ Write-Host ('{0} Git' -f (Get-DisplayMark (Test-Command git)));$cmake=Get-CMakeInstallation;if($cmake){Write-Host ('[OK] CMake：{0}' -f $cmake.Version)}else{Write-Host '[ ]  CMake：未安裝或安裝損壞'}
+ $python=Get-InstalledPythonVersion;if($python){Write-Host ('[OK] Python：{0}' -f $python.Version)}else{Write-Host '[ ]  Python：未安裝'}
  try{$null=Find-VisualStudioCppEnvironment;Write-Host '[OK] Visual Studio C++ Build Tools'}catch{Write-Host '[ ]  Visual Studio C++ Build Tools'}
  $mariaText=if($maria){if($maria.State -eq 'Running'){"執行中（服務：$($maria.Name)）"}else{"已安裝但未執行（服務：$($maria.Name)）"}}else{'未安裝'}
  Write-Host ('{0} MariaDB：{1}' -f (Get-DisplayMark ($null -ne $maria)),$mariaText)
