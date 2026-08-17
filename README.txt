@@ -26,7 +26,7 @@
 [A] 開啟 Logs
 [L] 清除 Logs
 [B] 全部移除
-[C] 啟動伺服器
+[C] 開啟 C:\Server\rAthena\runserver.bat 啟動並監看伺服器
 [H] 停止伺服器
 [D] 更新 ROenglishRE
 [E] 更新 NPC 腳本中文化

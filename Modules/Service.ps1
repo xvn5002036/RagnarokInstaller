@@ -1,7 +1,11 @@
 ﻿Set-StrictMode -Version 2.0
 function Start-RagnarokServer {
-    $core = Get-CoreInfo
+    $serverPath = $script:InstallerConfig.RAthenaPath
+    $runServerPath = Join-Path $serverPath 'runserver.bat'
     Ensure-RAthenaRuntimeDependencies
+    if (-not (Test-Path -LiteralPath $runServerPath -PathType Leaf)) {
+        throw ('找不到 rAthena 啟動腳本：{0}' -f $runServerPath)
+    }
     $serverExecutables = @(
         'login-server.exe',
         'char-server.exe',
@@ -11,20 +15,16 @@ function Start-RagnarokServer {
 
     $missing = @()
     foreach ($executableName in $serverExecutables) {
-        $executablePath = Join-Path $core.Path $executableName
+        $executablePath = Join-Path $serverPath $executableName
         if (-not (Test-Path -LiteralPath $executablePath)) { $missing += $executableName }
     }
     if ($missing.Count -gt 0) {
-        throw ('核心根目錄缺少伺服器執行檔：{0}。請先執行 [4] 或 [5]。' -f ($missing -join '、'))
+        throw ('rAthena 缺少伺服器執行檔：{0}。請先執行 [4] 編譯。' -f ($missing -join '、'))
     }
 
-    foreach ($executableName in $serverExecutables) {
-        $executablePath = Join-Path $core.Path $executableName
-        Start-Process -FilePath $executablePath -WorkingDirectory $core.Path
-        Write-Host ('[OK] {0} 已啟動。' -f $executableName) -ForegroundColor Green
-        Start-Sleep -Seconds 2
-    }
-    Write-Host '[OK] 四個伺服器已全部啟動。' -ForegroundColor Green
+    Start-Process -FilePath $runServerPath -WorkingDirectory $serverPath
+    Write-Host ('[OK] 已開啟：{0}' -f $runServerPath) -ForegroundColor Green
+    Write-Host '[i] runserver.bat 將負責啟動並監看 login、char、map 與 web server。' -ForegroundColor Cyan
 }
 function Stop-RagnarokServer {
  foreach($processName in @('login-server','char-server','map-server','web-server')){$process=Get-Process -Name $processName -ErrorAction SilentlyContinue;if($process){$process|Stop-Process -Force;Write-Host ('[OK] 已停止 {0}。' -f $processName) -ForegroundColor Green}else{Write-Host ('[-] {0} 未執行。' -f $processName) -ForegroundColor DarkYellow}}
