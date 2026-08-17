@@ -35,7 +35,7 @@ function Initialize-RagnarokDatabase {
   $databaseMode=Read-Host '請選擇，直接 Enter 保留現有資料'
   if($databaseMode -eq '2'){
    $confirmation=Read-Host '此動作會清除 rathenadb 與 rathenalog，請輸入 REBUILD 確認'
-   if($confirmation -ne 'REBUILD'){Write-Host '[-] 已取消全新重建。' -ForegroundColor DarkYellow;Pause-Console;return}
+   if($confirmation -ne 'REBUILD'){Write-Host '[-] 已取消全新重建。' -ForegroundColor DarkYellow;return}
    Write-Host '[..] 正在刪除舊資料庫並準備全新匯入...' -ForegroundColor Cyan
    Invoke-MariaDbSql ("DROP DATABASE IF EXISTS ``{0}``; DROP DATABASE IF EXISTS ``{1}``;" -f $d.MainDatabase,$d.LogDatabase)
   }else{
@@ -52,5 +52,5 @@ function Initialize-RagnarokDatabase {
  if($loginTableCount -eq 0){throw '現有資料庫缺少 login 資料表，可能是先前匯入中斷。請重新執行第 7 項並選擇 [2] 全新建立。'}
  $post="UPDATE login SET userid='froggos1', user_pass='froggop1' WHERE account_id=1; INSERT INTO login (account_id,userid,user_pass,sex,email,group_id,state) VALUES (2000000,'test','test','M','a@a.com',99,0) ON DUPLICATE KEY UPDATE userid='test',user_pass='test',group_id=99,state=0;"
  Invoke-MariaDbSql $post $d.MainDatabase
- Write-Host '[OK] 資料庫建立與匯入完成。' -ForegroundColor Green; Pause-Console
+ Write-Host '[OK] 資料庫建立與匯入完成。' -ForegroundColor Green
 }

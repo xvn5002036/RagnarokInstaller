@@ -180,5 +180,4 @@ function Initialize-RAthenaConfig {
  Write-Host '[OK] 資料庫連線、伺服器通訊帳號及 import 載入設定全部驗證完成。' -ForegroundColor Green
  if(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue){Write-Host '[!] 偵測到伺服器正在執行；請先選 [H] 停止，再選 [C] 重新啟動以載入新設定。' -ForegroundColor Yellow}else{Write-Host '[i] 設定會在下次選擇 [C] 啟動伺服器時生效。' -ForegroundColor Cyan}
  Write-Host '[i] PACKETVER 屬於編譯設定；若本次有變更 PACKETVER，請再執行 [5] 清除後重新編譯。' -ForegroundColor Cyan
- Pause-Console
 }

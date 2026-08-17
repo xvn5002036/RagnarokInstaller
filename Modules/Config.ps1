@@ -13,7 +13,9 @@ function Get-InstallerConfig {
  catch { $b='{0}.broken-{1}' -f $script:ConfigFile,(Get-Date -Format yyyyMMdd-HHmmss); Copy-Item $script:ConfigFile $b -Force; $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
 }
 function Select-Emulator {
- Write-Host ''; Write-Host '[1] rAthena'; Write-Host '[2] PandasWS'; $c=Read-Host ('選擇核心（目前 {0}）' -f $script:InstallerConfig.Emulator)
+ Write-Host ''; Write-Host '[1] rAthena'; Write-Host '    使用 rAthena 官方核心與其 GitHub 原始碼。' -ForegroundColor DarkGray
+ Write-Host '[2] PandasWS'; Write-Host '    使用 PandasWS 核心與其 GitHub 原始碼。' -ForegroundColor DarkGray
+ $c=Read-Host ('選擇核心（目前 {0}）' -f $script:InstallerConfig.Emulator)
  if($c -eq '1'){$script:InstallerConfig.Emulator='rAthena'} elseif($c -eq '2'){$script:InstallerConfig.Emulator='PandasWS'}
  Save-InstallerConfig $script:InstallerConfig
 }
