@@ -19,7 +19,7 @@ function Show-MainMenu {
  Write-Host '【伺服器管理】' -ForegroundColor Yellow
  Write-Host '[3] 更新 rAthena / PandasWS';Write-Host '    選擇核心，並從 GitHub 下載或更新它的原始碼。' -ForegroundColor DarkGray
  Write-Host '[4] 編譯目前核心';Write-Host '    使用 Visual Studio 建置目前核心，產生伺服器執行檔。' -ForegroundColor DarkGray
- Write-Host '[5] 清除後重新編譯目前核心';Write-Host '    先清除舊的建置結果，再完整重建目前核心。' -ForegroundColor DarkGray;Write-Host ''
+ Write-Host '[5] 清除目前核心的編譯結果';Write-Host '    只清除舊的執行檔與中間檔；需要重新編譯時請再執行 [4]。' -ForegroundColor DarkGray;Write-Host ''
  Write-Host '【客戶端與中文化】' -ForegroundColor Yellow
  Write-Host '[6] 更新 WARP';Write-Host '    下載或更新 WARP 客戶端補丁專案。' -ForegroundColor DarkGray
  Write-Host '[D] 更新 ROenglishRE';Write-Host '    下載或更新 ROenglishRE 英文化資源。' -ForegroundColor DarkGray
@@ -40,5 +40,5 @@ function Show-MainMenu {
  Write-Host '========================================================' -ForegroundColor Cyan
  if($script:ShowSystemDetails){Show-InstallerConfig;Write-Host '========================================================' -ForegroundColor Cyan;$script:ShowSystemDetails=$false}
 }
-$run=$true;while($run){Show-MainMenu;$choice=Read-MenuChoice;try{switch($choice){'1'{Install-DevelopmentEnvironment}'2'{Install-MariaDBEnvironment}'3'{Update-ServerRepository}'4'{Build-RagnarokServer}'5'{Rebuild-RagnarokServer}'6'{Update-ClientPatchRepository}'7'{Initialize-RagnarokDatabase}'8'{Initialize-RAthenaConfig}'9'{$script:ShowSystemDetails=$true}'A'{Open-LogsFolder}'L'{Clear-InstallerLogs}'B'{Remove-RagnarokInstallation}'C'{Start-RagnarokServer}'H'{Stop-RagnarokServer}'D'{Update-ROenglishRERepository}'E'{Update-NpcBig5Repository}'F'{Apply-RagnarokLocalization}'G'{Invoke-OneClickSetup}'0'{$run=$false}default{Write-Host '[X] 無效選項。' -ForegroundColor Red;Start-Sleep 1}}}catch{Write-Host ('[X] {0}' -f $_.Exception.Message) -ForegroundColor Red;Write-Log $_.Exception.ToString() 'ERROR';Start-Sleep 2}}
+$run=$true;while($run){Show-MainMenu;$choice=Read-MenuChoice;try{switch($choice){'1'{Install-DevelopmentEnvironment}'2'{Install-MariaDBEnvironment}'3'{Update-ServerRepository}'4'{Build-RagnarokServer}'5'{Clear-RagnarokBuild}'6'{Update-ClientPatchRepository}'7'{Initialize-RagnarokDatabase}'8'{Initialize-RAthenaConfig}'9'{$script:ShowSystemDetails=$true}'A'{Open-LogsFolder}'L'{Clear-InstallerLogs}'B'{Remove-RagnarokInstallation}'C'{Start-RagnarokServer}'H'{Stop-RagnarokServer}'D'{Update-ROenglishRERepository}'E'{Update-NpcBig5Repository}'F'{Apply-RagnarokLocalization}'G'{Invoke-OneClickSetup}'0'{$run=$false}default{Write-Host '[X] 無效選項。' -ForegroundColor Red;Start-Sleep 1}}}catch{Write-Host ('[X] {0}' -f $_.Exception.Message) -ForegroundColor Red;Write-Log $_.Exception.ToString() 'ERROR';Start-Sleep 2}}
 Write-Log 'Ragnarok 安裝管理中心已結束。'

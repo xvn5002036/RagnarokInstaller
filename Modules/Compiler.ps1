@@ -91,13 +91,16 @@ function Invoke-MSBuildMonitored {
  [void]$process.Handle;$started=Get-Date;$frame=0
  Write-Host '[i] 階段對照：Step 1 分析專案 -> Step 2 編譯 C++ -> Step 3 產生伺服器 EXE' -ForegroundColor Cyan
  Write-Host ('[i] 核心執行路徑：{0}' -f $CorePath) -ForegroundColor Cyan
- $activityTitle=if($Target-eq'Rebuild'){'Ragnarok Server Rebuild'}else{'Ragnarok Server Build'}
+ $activityTitle=switch($Target){'Clean'{'Ragnarok Server Clean'}'Rebuild'{'Ragnarok Server Rebuild'}default{'Ragnarok Server Build'}}
  $currentBuildItem='Waiting for compiler activity...'
  $shownFileNames=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  while(-not$process.HasExited){
   $compilerCount=@(Get-Process cl -ErrorAction SilentlyContinue).Count
   $linkerCount=@(Get-Process link -ErrorAction SilentlyContinue).Count
-  if($linkerCount){
+  if($Target-eq'Clean'){
+   $step='Cleaning old build outputs'
+   $explanation='Removing old EXE, library and intermediate files'
+  }elseif($linkerCount){
    $step='Step 3/3 - Creating server EXE files'
    $explanation='Linking login, char, map and web server executables'
   }elseif($compilerCount){
@@ -141,11 +144,12 @@ function Invoke-MSBuildMonitored {
  $process.WaitForExit();$process.Refresh();$elapsed=(Get-Date)-$started
  Write-Progress -Id 1 -Activity $activityTitle -Completed
  if($process.ExitCode -ne 0){throw ('Visual Studio MSBuild 失敗（錯誤碼 {0}）。請查看 Compile.log。' -f $process.ExitCode)}
- Write-Host ('[OK] 伺服器編譯完成，總耗時 {0:hh\:mm\:ss}。' -f $elapsed) -ForegroundColor Green
+ if($Target-eq'Clean'){Write-Host ('[OK] 舊的編譯結果已清除，總耗時 {0:hh\:mm\:ss}。需要產生伺服器 EXE 時請執行 [4]。' -f $elapsed) -ForegroundColor Green}
+ else{Write-Host ('[OK] 伺服器編譯完成，總耗時 {0:hh\:mm\:ss}。' -f $elapsed) -ForegroundColor Green}
 }
 
 function Invoke-VisualStudioBuild {
- param([switch]$Clean)
+ param([ValidateSet('Build','Clean','Rebuild')][string]$Target='Build')
  # 使用 rAthena 官方 Visual Studio Solution 與 MSBuild。
  $core=Get-CoreInfo
  if($core.Name -ne 'rAthena'){throw '目前的 Visual Studio Solution 編譯流程僅適用 rAthena。請先選擇 rAthena。'}
@@ -161,11 +165,10 @@ function Invoke-VisualStudioBuild {
  $compileLog=Join-Path $script:LogsPath 'Compile.log'
  if(Test-Path $compileLog){Move-Item $compileLog (Join-Path $script:LogsPath ('Compile-{0}.log' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))) -Force}
 
- $target=if($Clean){'Rebuild'}else{'Build'}
- # 此指令等同在 Visual Studio 選擇 Release/x64 後執行建置方案或重建方案。
- Invoke-MSBuildMonitored $vs $solution $target $core.Path
- Write-Host ('[OK] Visual Studio {0} 完成，輸出位置：{1}' -f $target,$core.Path) -ForegroundColor Green
+ # 此指令等同在 Visual Studio 選擇 Release/x64 後執行 Build、Clean 或 Rebuild。
+ Invoke-MSBuildMonitored $vs $solution $Target $core.Path
+ Write-Host ('[OK] Visual Studio {0} 完成，核心位置：{1}' -f $Target,$core.Path) -ForegroundColor Green
 }
 
-function Build-RagnarokServer {Invoke-VisualStudioBuild}
-function Rebuild-RagnarokServer {Invoke-VisualStudioBuild -Clean}
+function Build-RagnarokServer {Invoke-VisualStudioBuild -Target Build}
+function Clear-RagnarokBuild {Invoke-VisualStudioBuild -Target Clean}

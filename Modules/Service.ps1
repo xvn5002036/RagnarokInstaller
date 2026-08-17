@@ -39,7 +39,7 @@ function Invoke-OneClickSetup {
  Invoke-StatusStep $board '更新 WARP' {Update-GitRepository 'WARP' $script:InstallerConfig.Repositories.ClientPatch.Url $script:InstallerConfig.Repositories.ClientPatch.Branch $script:InstallerConfig.ClientPatchPath}
  Invoke-StatusStep $board '更新 ROenglishRE' {Update-GitRepository 'ROenglishRE' $script:InstallerConfig.Repositories.ROenglishRE.Url $script:InstallerConfig.Repositories.ROenglishRE.Branch $script:InstallerConfig.ROenglishREPath}
  Invoke-StatusStep $board '更新 NPC 中文化' {Update-GitRepository 'NPC 中文化' $script:InstallerConfig.Repositories.NpcBig5.Url $script:InstallerConfig.Repositories.NpcBig5.Branch $script:InstallerConfig.NpcBig5Path}
- Invoke-StatusStep $board '建立 / 匯入資料庫' {Initialize-RagnarokDatabase};Invoke-StatusStep $board '初始化 rAthena 設定' {Initialize-RAthenaConfig};Invoke-StatusStep $board '清除後重新編譯' {Invoke-VisualStudioBuild -Clean};Invoke-StatusStep $board '套用中文化' {Apply-RagnarokLocalization -SkipRemoteCheck}
+ Invoke-StatusStep $board '建立 / 匯入資料庫' {Initialize-RagnarokDatabase};Invoke-StatusStep $board '初始化 rAthena 設定' {Initialize-RAthenaConfig};Invoke-StatusStep $board '清除後重新編譯' {Invoke-VisualStudioBuild -Target Rebuild};Invoke-StatusStep $board '套用中文化' {Apply-RagnarokLocalization -SkipRemoteCheck}
  Show-StatusBoard $board '全部完成（伺服器未自動啟動）';Write-Host '';Write-Host '[OK] 一鍵初始化完成。' -ForegroundColor Green
  Write-Host ('資料庫：{0} / {1}' -f $script:InstallerConfig.Database.MainDatabase,$script:InstallerConfig.Database.LogDatabase);Write-Host ('資料庫帳號：{0}' -f $script:InstallerConfig.Database.ServerUserName);Write-Host ('資料庫密碼：{0}' -f $script:InstallerConfig.Database.ServerPassword);Write-Host '管理員帳號：froggos1';Write-Host '管理員密碼：froggop1';Write-Host 'GM 帳號：test';Write-Host 'GM 密碼：test'
 }
