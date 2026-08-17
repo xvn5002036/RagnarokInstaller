@@ -30,23 +30,61 @@ function Invoke-GitMonitored {
  if($process.ExitCode -ne 0){throw ('Git 執行失敗（錯誤碼 {0}）：{1}' -f $process.ExitCode,$Name)}
 }
 
+function Remove-StaleGitIndexLock {
+ param([Parameter(Mandatory=$true)][string]$RepositoryPath)
+ $gitDirectory=Join-Path $RepositoryPath '.git'
+ $lockPath=Join-Path $gitDirectory 'index.lock'
+ if(-not(Test-Path -LiteralPath $lockPath -PathType Leaf)){return}
+
+ $activeGit=@(Get-Process -Name git -ErrorAction SilentlyContinue)
+ if($activeGit.Count -gt 0){throw ('偵測到 Git 正在執行，暫不清除鎖定檔。請等待 Git 完成後再試（PID：{0}）。' -f (($activeGit.Id)-join '、'))}
+
+ $resolvedGitDirectory=(Resolve-Path -LiteralPath $gitDirectory).Path.TrimEnd('\')
+ $lockFile=Get-Item -LiteralPath $lockPath -Force
+ if($lockFile.DirectoryName.TrimEnd('\') -ine $resolvedGitDirectory -or $lockFile.Name -ine 'index.lock'){
+  throw ('拒絕清除位置不正確的 Git 鎖定檔：{0}' -f $lockFile.FullName)
+ }
+
+ Write-Host ('[!] 偵測到上次中斷留下的 Git 鎖定檔：{0}' -f $lockFile.FullName) -ForegroundColor Yellow
+ Remove-Item -LiteralPath $lockFile.FullName -Force
+ if(Test-Path -LiteralPath $lockFile.FullName){throw ('無法清除 Git 鎖定檔：{0}' -f $lockFile.FullName)}
+ Write-Log -Message ('已清除殘留 Git 鎖定檔：{0}' -f $lockFile.FullName) -FileName 'Git.log'
+ Write-Host '[OK] 已安全清除殘留鎖定檔，繼續更新。' -ForegroundColor Green
+}
+
 function Update-GitRepository {
  param([string]$Name,[string]$Url,[string]$Branch,[string]$Path)
  if(-not(Test-Command git)){throw '找不到 Git，請先執行 [1]。'}
  if(Test-Path (Join-Path $Path '.git')){
-  Write-Host ('[..] 更新 {0}...' -f $Name)
-  Invoke-GitMonitored @('-C',$Path,'fetch','--progress','--prune','origin') ("更新 $Name") $Path
-  Invoke-GitMonitored @('-C',$Path,'checkout',$Branch) ("切換 $Name 分支") $Path
-  Invoke-GitMonitored @('-C',$Path,'pull','--progress','--ff-only','origin',$Branch) ("合併 $Name 更新") $Path
+  Write-Host ('[..] 正在向遠端查詢 {0} 的最新版本...' -f $Name) -ForegroundColor Cyan
+  Invoke-GitMonitored @('-C',$Path,'fetch','--progress','--prune','origin',$Branch) ("查詢 $Name 最新版本") $Path
+  Remove-StaleGitIndexLock -RepositoryPath $Path
+  $localChanges=@(& git -C $Path status --porcelain=v1 --untracked-files=no 2>$null)
+  $localChangeCount=@($localChanges|Where-Object{-not[string]::IsNullOrWhiteSpace([string]$_)}).Count
+  $localCommit=([string](& git -C $Path rev-parse HEAD 2>$null)).Trim()
+  $remoteCommit=([string](& git -C $Path rev-parse ("origin/{0}" -f $Branch) 2>$null)).Trim()
+  if([string]::IsNullOrWhiteSpace($localCommit)-or[string]::IsNullOrWhiteSpace($remoteCommit)){throw ('無法讀取 {0} 的本機或遠端版本。' -f $Name)}
+  $behindText=([string](& git -C $Path rev-list --count ("HEAD..origin/{0}" -f $Branch) 2>$null)).Trim()
+  $behind=0;if(-not[int]::TryParse($behindText,[ref]$behind)){throw ('無法比較 {0} 的版本差異。' -f $Name)}
+  if($localChangeCount -gt 0){Write-Host ('[!] {0} 有 {1} 個已追蹤檔案遭修改，將依設定直接用遠端版本覆蓋。' -f $Name,$localChangeCount) -ForegroundColor Yellow}
+  Invoke-GitMonitored @('-C',$Path,'checkout','--force',$Branch) ("強制切換 $Name 分支") $Path
+  Invoke-GitMonitored @('-C',$Path,'reset','--hard',("origin/{0}" -f $Branch)) ("以遠端版本覆蓋 $Name") $Path
+  $shortCommit=([string](& git -C $Path rev-parse --short HEAD 2>$null)).Trim()
+  if($behind -gt 0){$script:MenuNotice=('{0} 已更新 {1} 個版本（目前 {2}），並覆蓋 {3} 個本機修改。' -f $Name,$behind,$shortCommit,$localChangeCount)}
+  elseif($localChangeCount -gt 0){$script:MenuNotice=('{0} 遠端已是最新版（{1}），並已覆蓋 {2} 個本機修改。' -f $Name,$shortCommit,$localChangeCount)}
+  else{$script:MenuNotice=('{0} 已是最新版（{1}）。' -f $Name,$shortCommit);Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green;return $false}
  } elseif(Test-Path $Path){throw ('目錄已存在但不是 Git 儲存庫：{0}' -f $Path)}
  else{
   Write-Host ('[..] 下載 {0}...' -f $Name)
   Invoke-GitMonitored @('clone','--progress','--verbose','--branch',$Branch,'--single-branch',$Url,$Path) ("下載 $Name") $Path
+  $shortCommit=([string](& git -C $Path rev-parse --short HEAD 2>$null)).Trim()
+  $script:MenuNotice=('{0} 已下載完成（目前 {1}）。' -f $Name,$shortCommit)
  }
- Write-Host ('[OK] {0} 已完成。' -f $Name) -ForegroundColor Green
+ Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green
+ return $true
 }
 
-function Update-ServerRepository {Select-Emulator;$x=Get-CoreInfo;Update-GitRepository $x.Name $x.Repo.Url $x.Repo.Branch $x.Path;Pause-Console}
+function Update-ServerRepository {Select-Emulator;$x=Get-CoreInfo;Update-GitRepository $x.Name $x.Repo.Url $x.Repo.Branch $x.Path}
 function Update-ClientPatchRepository {
  $r=$script:InstallerConfig.Repositories.ClientPatch
  $path=$script:InstallerConfig.ClientPatchPath
@@ -67,7 +105,6 @@ function Update-ClientPatchRepository {
   }
  }
  Update-GitRepository 'WARP' $r.Url $r.Branch $path
- Pause-Console
 }
-function Update-ROenglishRERepository {$r=$script:InstallerConfig.Repositories.ROenglishRE;Update-GitRepository 'ROenglishRE' $r.Url $r.Branch $script:InstallerConfig.ROenglishREPath;Pause-Console}
-function Update-NpcBig5Repository {$r=$script:InstallerConfig.Repositories.NpcBig5;Update-GitRepository 'NPC 中文化' $r.Url $r.Branch $script:InstallerConfig.NpcBig5Path;Pause-Console}
+function Update-ROenglishRERepository {$r=$script:InstallerConfig.Repositories.ROenglishRE;Update-GitRepository 'ROenglishRE' $r.Url $r.Branch $script:InstallerConfig.ROenglishREPath}
+function Update-NpcBig5Repository {$r=$script:InstallerConfig.Repositories.NpcBig5;Update-GitRepository 'NPC 中文化' $r.Url $r.Branch $script:InstallerConfig.NpcBig5Path}

@@ -39,9 +39,6 @@ function Get-DevelopmentEnvironmentState {
  $states=@()
  $gitVersion=Get-NativeToolVersion 'git.exe' @('--version')
  $states+=[pscustomobject]@{Name='Git';Package='git';Version=$gitVersion;Installed=![string]::IsNullOrWhiteSpace($gitVersion)}
- $cmake=Get-CMakeInstallation
- $cmakeVersion=if($cmake){$cmake.Version}else{$null}
- $states+=[pscustomobject]@{Name='CMake';Package='cmake';Version=$cmakeVersion;Installed=($null-ne$cmake)}
  $ninjaVersion=Get-NativeToolVersion 'ninja.exe' @('--version')
  $states+=[pscustomobject]@{Name='Ninja';Package='ninja';Version=$ninjaVersion;Installed=![string]::IsNullOrWhiteSpace($ninjaVersion)}
  $sevenZipCommand=Get-Command '7z.exe' -ErrorAction SilentlyContinue
@@ -239,10 +236,9 @@ function Install-DevelopmentEnvironment {
  Write-Host ('[OK] Python：{0}' -f $python.Version) -ForegroundColor Green
  Write-Host ('     路徑：{0}' -f $python.Path) -ForegroundColor DarkGray
  try{$vs=Find-VisualStudioCppEnvironment;$vsVersion=(Get-Item -LiteralPath $vs.MSBuild).VersionInfo.FileVersion;Write-Host ('[OK] Visual Studio C++ Build Tools：{0}' -f $vsVersion) -ForegroundColor Green;$vsOperation='upgrade'}catch{Write-Host '[ ]  Visual Studio C++ Build Tools：無法讀取版本，將下載安裝' -ForegroundColor Yellow;$vsOperation='install'}
- $vsArgs=@('-NoExit','-ExecutionPolicy','Bypass','-Command',"choco $vsOperation visualstudio2022buildtools visualstudio2022-workload-vctools -y --package-parameters='--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.VC.TestAdapterForBoostTest --add Microsoft.VisualStudio.Component.VC.ASAN --add Microsoft.VisualStudio.Component.VC.vcpkg' 2>&1 | Tee-Object -FilePath '$($script:LogsPath)\VSBuildTools.log' -Append")
+ $vsArgs=@('-NoExit','-ExecutionPolicy','Bypass','-Command',"choco $vsOperation visualstudio2022buildtools visualstudio2022-workload-vctools -y --package-parameters='--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.TestAdapterForBoostTest --add Microsoft.VisualStudio.Component.VC.ASAN --add Microsoft.VisualStudio.Component.VC.vcpkg' 2>&1 | Tee-Object -FilePath '$($script:LogsPath)\VSBuildTools.log' -Append")
  Start-Process powershell.exe -Verb RunAs -ArgumentList $vsArgs
  Write-Host '[OK] 基本工具、Python 與 Visual C++ 2012 Runtime 已完成；Visual Studio Build Tools 已在獨立視窗啟動。' -ForegroundColor Green
- Pause-Console
 }
 
 function Install-MariaDBEnvironment {
@@ -315,5 +311,4 @@ function Install-MariaDBEnvironment {
  Write-Host ('服務：{0}' -f $service.Name)
  Write-Host ('狀態：{0}' -f $service.State)
  Write-Host ('用戶端：{0}' -f $client)
- Pause-Console
 }

@@ -100,9 +100,9 @@ function Invoke-MSBuildMonitored {
  if($process.ExitCode -ne 0){throw ('Visual Studio MSBuild 失敗（錯誤碼 {0}）。請查看 Compile.log。' -f $process.ExitCode)}
 }
 
-function Invoke-CMakeBuild {
+function Invoke-VisualStudioBuild {
  param([switch]$Clean)
- # 保留原函式名稱以相容主選單；實際使用 rAthena 官方 Visual Studio Solution。
+ # 使用 rAthena 官方 Visual Studio Solution 與 MSBuild。
  $core=Get-CoreInfo
  if($core.Name -ne 'rAthena'){throw '目前的 Visual Studio Solution 編譯流程僅適用 rAthena。請先選擇 rAthena。'}
  if(-not(Test-Path $core.Path)){throw ('核心目錄不存在：{0}' -f $core.Path)}
@@ -123,5 +123,5 @@ function Invoke-CMakeBuild {
  Write-Host ('[OK] Visual Studio {0} 完成，輸出位置：{1}' -f $target,$core.Path) -ForegroundColor Green
 }
 
-function Build-RagnarokServer {Invoke-CMakeBuild;Pause-Console}
-function Rebuild-RagnarokServer {Invoke-CMakeBuild -Clean;Pause-Console}
+function Build-RagnarokServer {Invoke-VisualStudioBuild}
+function Rebuild-RagnarokServer {Invoke-VisualStudioBuild -Clean}

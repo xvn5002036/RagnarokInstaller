@@ -3,7 +3,6 @@ function Test-IsAdministrator { $p=New-Object Security.Principal.WindowsPrincipa
 function Assert-Administrator { if(-not(Test-IsAdministrator)){throw '請以系統管理員身分執行 Start.cmd。'} }
 function Initialize-ApplicationDirectories { foreach($p in @($script:ConfigPath,$script:LogsPath,$script:InstallerConfig.RootPath)){if($p -and -not(Test-Path -LiteralPath $p)){New-Item -ItemType Directory -Path $p -Force|Out-Null}} }
 function Read-MenuChoice { param([string]$Prompt='請選擇'); return (Read-Host $Prompt).Trim().ToUpperInvariant() }
-function Pause-Console { Write-Host ''; [void](Read-Host '按 Enter 返回主選單') }
 function Open-LogsFolder { Initialize-LogDirectory $script:LogsPath; Start-Process explorer.exe -ArgumentList ('"{0}"' -f $script:LogsPath) }
 function Test-Command { param([string]$Name); return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue) }
 function Get-InstalledPythonVersion {
@@ -19,18 +18,6 @@ function Get-InstalledPythonVersion {
    if($exitCode -eq 0 -and $output -match '^Python\s+\d+\.\d+\.\d+'){
     return [pscustomobject]@{Version=$output;Path=$candidate.Path}
    }
- }
- return $null
-}
-function Get-CMakeInstallation {
- $paths=@()
- $command=Get-Command 'cmake.exe' -ErrorAction SilentlyContinue;if($command){$paths+=$command.Source}
- $paths+=@('C:\Program Files\CMake\bin\cmake.exe',(Join-Path ${env:ProgramFiles(x86)} 'CMake\bin\cmake.exe'))
- foreach($path in @($paths|Where-Object{$_}|Select-Object -Unique)){
-  if(-not(Test-Path -LiteralPath $path)){continue}
-  $oldPreference=$ErrorActionPreference;$ErrorActionPreference='Continue'
-  try{$output=(& $path --version 2>&1|Out-String).Trim();$exitCode=$LASTEXITCODE}finally{$ErrorActionPreference=$oldPreference}
-  if($exitCode -eq 0 -and $output -match '(?m)^cmake version\s+[^\r\n]+'){return [pscustomobject]@{Version=$Matches[0];Path=$path}}
  }
  return $null
 }
