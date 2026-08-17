@@ -82,22 +82,66 @@ function Invoke-MSBuildMonitored {
  param($VisualStudio,[string]$Solution,[string]$Target,[string]$CorePath)
  $logPath=Join-Path $script:LogsPath 'Compile.log'
  $arguments=@(
-  ('"{0}"' -f $Solution),('/t:'+$Target),'/m:2','/nr:false','/nologo','/v:minimal',
+  ('"{0}"' -f $Solution),('/t:'+$Target),'/m:2','/nr:false','/nologo','/noconsolelogger',
   '/p:Configuration=Release','/p:Platform=x64','/p:PreferredToolArchitecture=x64',
   '/fl',('/flp:logfile="{0}";verbosity=normal;encoding=UTF-8' -f $logPath)
  ) -join ' '
  Write-Log -Message ('執行：MSBuild {0}' -f $arguments) -FileName 'Compile.log'
  $process=Start-Process -FilePath $VisualStudio.MSBuild -ArgumentList $arguments -WorkingDirectory $CorePath -NoNewWindow -PassThru
- [void]$process.Handle;$started=Get-Date
+ [void]$process.Handle;$started=Get-Date;$frame=0
+ Write-Host '[i] 階段對照：Step 1 分析專案 -> Step 2 編譯 C++ -> Step 3 產生伺服器 EXE' -ForegroundColor Cyan
+ Write-Host ('[i] 核心執行路徑：{0}' -f $CorePath) -ForegroundColor Cyan
+ $activityTitle=if($Target-eq'Rebuild'){'Ragnarok Server Rebuild'}else{'Ragnarok Server Build'}
+ $currentBuildItem='Waiting for compiler activity...'
+ $shownFileNames=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  while(-not$process.HasExited){
   $compilerCount=@(Get-Process cl -ErrorAction SilentlyContinue).Count
   $linkerCount=@(Get-Process link -ErrorAction SilentlyContinue).Count
-  $activity=if($linkerCount){'正在連結 EXE'}elseif($compilerCount){'正在編譯 C/C++'}else{'正在分析專案/等待工作'}
-  Write-Host ("`r[..] MSBuild $Target 執行中，PID {0}，耗時 {1:hh\:mm\:ss}，{2}（編譯器 {3}）      " -f $process.Id,((Get-Date)-$started),$activity,$compilerCount) -NoNewline -ForegroundColor Cyan
-  Start-Sleep -Seconds 2;$process.Refresh()
+  if($linkerCount){
+   $step='Step 3/3 - Creating server EXE files'
+   $explanation='Linking login, char, map and web server executables'
+  }elseif($compilerCount){
+   $step=('Step 2/3 - Compiling C++ - Workers: {0}' -f $compilerCount)
+   $explanation='Converting source code into program components'
+  }else{
+   $step='Step 1/3 - Analyzing projects'
+   $explanation='Checking which files need to be compiled'
+  }
+  try{
+   $recentLines=@(Get-Content -LiteralPath $logPath -Tail 250 -ErrorAction SilentlyContinue)
+   $newFileNames=New-Object 'Collections.Generic.List[string]'
+   foreach($recentLine in $recentLines){
+    $fileMatches=[regex]::Matches([string]$recentLine,'(?i)([A-Za-z0-9_.-]+\.(?:cpp|c|cc|cxx|vcxproj|lib|exe|dll))')
+    foreach($fileMatch in $fileMatches){
+     $fileName=$fileMatch.Groups[1].Value
+     if($shownFileNames.Add($fileName)){[void]$newFileNames.Add($fileName)}
+    }
+   }
+   if($newFileNames.Count){
+    Write-Progress -Id 1 -Activity $activityTitle -Completed
+    foreach($fileName in @($newFileNames|Select-Object -Last 12)){Write-Host ('    {0}' -f $fileName) -ForegroundColor White}
+   }
+   for($lineIndex=$recentLines.Count-1;$lineIndex-ge0;$lineIndex--){
+    $line=[string]$recentLines[$lineIndex]
+    if($linkerCount -and $line-match '(?i)([A-Z]:\\[^\r\n]*?\.(?:exe|dll))'){
+     $activePath=$Matches[1].Trim();if($activePath.StartsWith($CorePath,[StringComparison]::OrdinalIgnoreCase)){$activePath=$activePath.Substring($CorePath.Length).TrimStart('\')}
+     $currentBuildItem=('Creating EXE: {0}' -f $activePath);break
+    }
+    if($compilerCount -and $line-match '(?i)((?:\.\.[\\/]|[A-Z]:\\|src[\\/]|3rdparty[\\/])[^''"\)\r\n]*?\.(?:cpp|c|cc|cxx))'){
+     $activePath=$Matches[1].Trim();if($activePath.StartsWith($CorePath,[StringComparison]::OrdinalIgnoreCase)){$activePath=$activePath.Substring($CorePath.Length).TrimStart('\')}
+     $currentBuildItem=('Compiling: {0}' -f $activePath);break
+    }
+   }
+  }catch{}
+  $elapsed=(Get-Date)-$started
+  $operation=if($currentBuildItem-eq'Waiting for compiler activity...'){('{0} | Path: {1}' -f $explanation,$CorePath)}else{$currentBuildItem}
+  Write-Progress -Id 1 -Activity $activityTitle -Status (('{0} | Elapsed: {1:hh\:mm\:ss}' -f $step,$elapsed)) -CurrentOperation $operation -PercentComplete -1
+  $frame++;Start-Sleep -Milliseconds 500;$process.Refresh()
  }
- Write-Host '';$process.WaitForExit();$process.Refresh()
+ $process.WaitForExit();$process.Refresh();$elapsed=(Get-Date)-$started
+ Write-Progress -Id 1 -Activity $activityTitle -Completed
  if($process.ExitCode -ne 0){throw ('Visual Studio MSBuild 失敗（錯誤碼 {0}）。請查看 Compile.log。' -f $process.ExitCode)}
+ Write-Host ('[OK] 伺服器編譯完成，總耗時 {0:hh\:mm\:ss}。' -f $elapsed) -ForegroundColor Green
 }
 
 function Invoke-VisualStudioBuild {
