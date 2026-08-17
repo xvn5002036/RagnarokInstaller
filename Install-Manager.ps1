@@ -33,7 +33,7 @@ function Show-MainMenu {
  Write-Host '[A] 開啟 Logs';Write-Host '    在檔案總管開啟安裝管理中心的記錄檔資料夾。' -ForegroundColor DarkGray
  Write-Host '[L] 清除 Logs';Write-Host '    刪除安裝管理中心產生的舊記錄檔。' -ForegroundColor DarkGray
  Write-Host '[B] 全部移除';Write-Host '    移除 Ragnarok 伺服器的安裝內容；執行前會要求確認。' -ForegroundColor DarkYellow
- Write-Host '[C] 啟動伺服器';Write-Host '    啟動 login、char、map 與 web 等伺服器程式。' -ForegroundColor DarkGray
+ Write-Host '[C] 啟動伺服器';Write-Host '    開啟 C:\Server\rAthena\runserver.bat，由它啟動並監看所有伺服器。' -ForegroundColor DarkGray
  Write-Host '[H] 停止伺服器';Write-Host '    停止目前正在執行的 Ragnarok 伺服器程式。' -ForegroundColor DarkGray
  Write-Host '[G] 一鍵初始化（不自動啟動）';Write-Host '    依序準備環境、核心、資料庫與設定，完成後不啟動伺服器。' -ForegroundColor DarkGray
  Write-Host '[0] 離開';Write-Host '    關閉 Ragnarok 安裝管理中心。' -ForegroundColor DarkGray
