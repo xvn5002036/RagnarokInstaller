@@ -9,6 +9,7 @@ function Show-CompactSystemStatus {
  $mariaText=if($maria){if($maria.State -eq 'Running'){"執行中（服務：$($maria.Name)）"}else{"已安裝但未執行（服務：$($maria.Name)）"}}else{'未安裝'}
  Write-Host ('{0} MariaDB：{1}' -f (Get-DisplayMark ($null -ne $maria)),$mariaText)
  Write-Host ('{0} {1} 原始碼' -f (Get-DisplayMark (Test-Path (Join-Path $core.Path '.git'))),$core.Name)
+ Write-Host ('{0} 玩家管理後台' -f (Get-DisplayMark (Test-Path (Join-Path $script:InstallerConfig.PlayerAdminPath '.git'))))
 }
 function New-StatusBoard {param([string[]]$Steps);$board=[ordered]@{};foreach($step in $Steps){$board[$step]='Pending'};return $board}
 function Show-StatusBoard {

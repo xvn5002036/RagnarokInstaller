@@ -1,15 +1,22 @@
 ﻿Set-StrictMode -Version 2.0
 function New-DefaultInstallerConfig {
  [pscustomobject]@{
-  SchemaVersion=2; Emulator='rAthena'; RootPath='C:\Server'; RAthenaPath='C:\Server\rAthena'; PandasWSPath='C:\Server\PandasWS'; ClientPatchPath='C:\Server\WARP0716'; ROenglishREPath='C:\Server\ROenglishRE'; NpcBig5Path='C:\Server\rathena-npc-big5'; PacketVersion=20260107
-  Repositories=[pscustomobject]@{RAthena=[pscustomobject]@{Url='https://github.com/rathena/rathena.git';Branch='master'};PandasWS=[pscustomobject]@{Url='https://github.com/PandasWS/Pandas.git';Branch='master'};ClientPatch=[pscustomobject]@{Url='https://github.com/CrazyBebop/WARP0716.git';Branch='main'};ROenglishRE=[pscustomobject]@{Url='https://github.com/llchrisll/ROenglishRE.git';Branch='master'};NpcBig5=[pscustomobject]@{Url='https://github.com/xvn5002036/rathena-npc-big5.git';Branch='main'}}
+  SchemaVersion=3; Emulator='rAthena'; RootPath='C:\Server'; RAthenaPath='C:\Server\rAthena'; PandasWSPath='C:\Server\PandasWS'; ClientPatchPath='C:\Server\WARP0716'; ROenglishREPath='C:\Server\ROenglishRE'; NpcBig5Path='C:\Server\rathena-npc-big5'; PlayerAdminPath='C:\Server\RathenaPlayerAdmin'; PacketVersion=20260107
+  Repositories=[pscustomobject]@{RAthena=[pscustomobject]@{Url='https://github.com/rathena/rathena.git';Branch='master'};PandasWS=[pscustomobject]@{Url='https://github.com/PandasWS/Pandas.git';Branch='master'};ClientPatch=[pscustomobject]@{Url='https://github.com/CrazyBebop/WARP0716.git';Branch='main'};ROenglishRE=[pscustomobject]@{Url='https://github.com/llchrisll/ROenglishRE.git';Branch='master'};NpcBig5=[pscustomobject]@{Url='https://github.com/xvn5002036/rathena-npc-big5.git';Branch='main'};PlayerAdmin=[pscustomobject]@{Url='https://github.com/xvn5002036/RathenaPlayerAdmin.git';Branch='main'}}
   Database=[pscustomobject]@{Engine='MariaDB';HostName='127.0.0.1';Port=3306;MainDatabase='rathenadb';LogDatabase='rathenalog';WebDatabase='rathenadb';UserName='root';Password='';ServerUserName='rathenadbusr';ServerPassword='froggopass';CharacterSet='utf8mb4';Collation='utf8mb4_unicode_520_ci'}
  }
 }
 function Save-InstallerConfig { param($Config); if(-not(Test-Path $script:ConfigPath)){New-Item -ItemType Directory -Path $script:ConfigPath -Force|Out-Null}; [IO.File]::WriteAllText($script:ConfigFile,($Config|ConvertTo-Json -Depth 10),(New-Object Text.UTF8Encoding($true))); Write-Log ('設定已儲存：{0}' -f $script:ConfigFile) }
 function Get-InstallerConfig {
  if(-not(Test-Path $script:ConfigFile)){ $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
- try { $s=[IO.File]::ReadAllText($script:ConfigFile,[Text.Encoding]::UTF8); if([string]::IsNullOrWhiteSpace($s)){throw '設定檔為空白'}; return ($s|ConvertFrom-Json) }
+ try {
+  $s=[IO.File]::ReadAllText($script:ConfigFile,[Text.Encoding]::UTF8);if([string]::IsNullOrWhiteSpace($s)){throw '設定檔為空白'}
+  $c=$s|ConvertFrom-Json;$defaults=New-DefaultInstallerConfig
+  if(-not($c.PSObject.Properties.Name -contains 'PlayerAdminPath')){$c|Add-Member -NotePropertyName PlayerAdminPath -NotePropertyValue $defaults.PlayerAdminPath}
+  if(-not($c.Repositories.PSObject.Properties.Name -contains 'PlayerAdmin')){$c.Repositories|Add-Member -NotePropertyName PlayerAdmin -NotePropertyValue $defaults.Repositories.PlayerAdmin}
+  if([int]$c.SchemaVersion -lt 3){$c.SchemaVersion=3;Save-InstallerConfig $c}
+  return $c
+ }
  catch { $b='{0}.broken-{1}' -f $script:ConfigFile,(Get-Date -Format yyyyMMdd-HHmmss); Copy-Item $script:ConfigFile $b -Force; $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
 }
 function Select-Emulator {
@@ -32,7 +39,7 @@ function Edit-DatabaseConnection {
 function Show-InstallerConfig {
  $c=$script:InstallerConfig; $d=$c.Database; $core=Get-CoreInfo
  Write-Host ''; Write-Host '目前設定' -ForegroundColor Cyan
- Write-Host ('核心：{0}' -f $core.Name); Write-Host ('安裝路徑：{0}' -f $core.Path); Write-Host ('MariaDB：{0}:{1}' -f $d.HostName,$d.Port); Write-Host ('主要資料庫：{0}' -f $d.MainDatabase); Write-Host ('紀錄資料庫：{0}' -f $d.LogDatabase); Write-Host ('管理帳號：{0}' -f $d.UserName); Write-Host ('管理密碼：{0}' -f $d.Password); Write-Host ('伺服器帳號：{0}' -f $d.ServerUserName); Write-Host ('伺服器密碼：{0}' -f $d.ServerPassword); Write-Host ('PACKETVER：{0}' -f $c.PacketVersion)
+ Write-Host ('核心：{0}' -f $core.Name); Write-Host ('安裝路徑：{0}' -f $core.Path);Write-Host ('玩家管理後台：{0}' -f $c.PlayerAdminPath); Write-Host ('MariaDB：{0}:{1}' -f $d.HostName,$d.Port); Write-Host ('主要資料庫：{0}' -f $d.MainDatabase); Write-Host ('紀錄資料庫：{0}' -f $d.LogDatabase); Write-Host ('管理帳號：{0}' -f $d.UserName); Write-Host ('管理密碼：{0}' -f $d.Password); Write-Host ('伺服器帳號：{0}' -f $d.ServerUserName); Write-Host ('伺服器密碼：{0}' -f $d.ServerPassword); Write-Host ('PACKETVER：{0}' -f $c.PacketVersion)
  $svc=Get-MariaDbService
  if($svc){Write-Host ('MariaDB 服務：{0} / {1}' -f $svc.Name,$svc.State);Write-Host ('啟動類型：{0}' -f $svc.StartMode)}
  else{Write-Host 'MariaDB 服務：未偵測到'}

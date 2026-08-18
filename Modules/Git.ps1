@@ -4,10 +4,14 @@ function Invoke-GitMonitored {
  param([string[]]$Arguments,[string]$Name,[string]$Destination='')
  $git=Get-Command git.exe -ErrorAction SilentlyContinue
  if(-not$git){throw '找不到 Git，請先執行 [1]。'}
+ Initialize-LogDirectory $script:LogsPath
+ $captureId=[guid]::NewGuid().ToString('N')
+ $stdoutPath=Join-Path $script:LogsPath ('.git-{0}.out' -f $captureId)
+ $stderrPath=Join-Path $script:LogsPath ('.git-{0}.err' -f $captureId)
  $quoted=@($Arguments|ForEach-Object{if($_ -match '[\s"]'){'"'+($_ -replace '"','\"')+'"'}else{$_}})
  Write-Log -Message ('執行：git {0}' -f ($quoted -join ' ')) -FileName 'Git.log'
  $env:GIT_PROGRESS_DELAY='0'
- $process=Start-Process -FilePath $git.Source -ArgumentList ($quoted -join ' ') -NoNewWindow -PassThru
+ $process=Start-Process -FilePath $git.Source -ArgumentList ($quoted -join ' ') -NoNewWindow -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
  [void]$process.Handle
  $started=Get-Date;$lastStatus=Get-Date
  while(-not$process.HasExited){
@@ -27,7 +31,18 @@ function Invoke-GitMonitored {
  }
  Write-Host ''
  $process.WaitForExit();$process.Refresh()
- if($process.ExitCode -ne 0){throw ('Git 執行失敗（錯誤碼 {0}）：{1}' -f $process.ExitCode,$Name)}
+ $capturedOutput=@()
+ foreach($capturePath in @($stdoutPath,$stderrPath)){
+  if(Test-Path -LiteralPath $capturePath){$capturedOutput+=@(Get-Content -LiteralPath $capturePath -ErrorAction SilentlyContinue)}
+ }
+ if($capturedOutput.Count -gt 0){Add-Content -LiteralPath (Join-Path $script:LogsPath 'Git.log') -Value $capturedOutput -Encoding UTF8}
+ foreach($capturePath in @($stdoutPath,$stderrPath)){if(Test-Path -LiteralPath $capturePath){Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue}}
+ if($process.ExitCode -ne 0){
+  $errorDetail=(@($capturedOutput|Where-Object{-not[string]::IsNullOrWhiteSpace([string]$_)})|Select-Object -Last 1)
+  if($errorDetail){throw ('Git 執行失敗（錯誤碼 {0}）：{1}。{2}' -f $process.ExitCode,$Name,$errorDetail)}
+  throw ('Git 執行失敗（錯誤碼 {0}）：{1}' -f $process.ExitCode,$Name)
+ }
+ Start-Sleep -Milliseconds 300
 }
 
 function Remove-StaleGitIndexLock {
