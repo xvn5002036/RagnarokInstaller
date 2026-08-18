@@ -7,10 +7,11 @@
   <meta name="theme-color" content="#0b111c">
   <title>Ragnarok Installer 使用教學</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="stylesheet" href="styles.css?v=20260819-1">
+  <link rel="stylesheet" href="styles.css?v=20260819-2">
 </head>
 <body id="top">
   <a class="skip-link" href="#main">跳到主要內容</a>
+  <div class="scroll-progress" aria-hidden="true"><span></span></div>
   <header class="site-header">
     <div class="nav-wrap">
       <a class="brand" href="#top" aria-label="回到首頁">
@@ -32,12 +33,12 @@
   <main id="main">
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">WINDOWS · RATHENA · 自動化管理</p>
+        <div class="hero-kicker"><span>v6.0</span> WINDOWS · RATHENA · 自動化管理</div>
         <h1>從零開始架設<br><span>Ragnarok 伺服器</span></h1>
         <p class="hero-lead">用一個選單完成環境安裝、伺服器核心更新、資料庫初始化、Visual Studio 編譯、中文化與伺服器啟動。</p>
         <div class="hero-actions">
-          <a class="button primary" href="RagnarokInstaller.exe" download>下載安裝程式</a>
-          <a class="button secondary" href="#quickstart">查看安裝教學</a>
+          <a class="button primary" href="RagnarokInstaller.exe" download>下載安裝程式 <span aria-hidden="true">↓</span></a>
+          <a class="button secondary" href="#quickstart">查看安裝教學 <span aria-hidden="true">→</span></a>
         </div>
         <p class="launcher-note">下載後開啟 <code>RagnarokInstaller.exe</code>，即可查看安裝進度、自動取得最新版並啟動管理中心。</p>
         <ul class="hero-points" aria-label="特色">
@@ -67,6 +68,13 @@
       <strong>開始前請注意</strong>
       <p>本工具會安裝系統元件並管理 <code>C:\Server</code>，請使用系統管理員權限執行。正式環境請另外規劃防火牆、備份與帳號安全。</p>
     </section>
+
+    <nav class="section-jump" aria-label="快速前往">
+      <a href="#guide"><span>01</span>完整安裝教學</a>
+      <a href="#scenarios"><span>02</span>日常更新流程</a>
+      <a href="#commands"><span>03</span>功能選單速查</a>
+      <a href="#faq"><span>04</span>常見問題排除</a>
+    </nav>
 
     <section class="section" id="quickstart">
       <div class="section-heading">
@@ -225,13 +233,25 @@
         <details><summary>可以直接下載缺少的 DLL 嗎？</summary><p>不要從不明網站單獨下載 DLL。請執行選項 1，讓管理中心安裝正確的 Visual C++ Runtime 與建置工具。</p></details>
       </div>
     </section>
+
+    <section class="final-cta" aria-labelledby="download-title">
+      <div>
+        <p class="eyebrow">READY TO BEGIN?</p>
+        <h2 id="download-title">準備好建立你的伺服器了嗎？</h2>
+        <p>下載最新版 Ragnarok Installer，跟著完整教學完成環境、資料庫、編譯與啟動。</p>
+      </div>
+      <div class="final-actions">
+        <a class="button primary" href="RagnarokInstaller.exe" download>下載最新版 <span aria-hidden="true">↓</span></a>
+        <a class="button secondary" href="https://github.com/xvn5002036/RagnarokInstaller" target="_blank" rel="noreferrer">查看 GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
   </main>
 
   <footer>
-    <div><strong>Ragnarok Installer v6.0</strong><p>社群工具，非 Gravity 官方產品。</p></div>
+    <div class="footer-brand"><img src="assets/ragnarok-installer-logo.png" width="44" height="44" alt=""><div><strong>Ragnarok Installer v6.0</strong><p>社群工具，非 Gravity 官方產品。</p></div></div>
     <div><a href="#top">回到頂端 ↑</a><a href="https://github.com/xvn5002036/RagnarokInstaller" target="_blank" rel="noreferrer">GitHub 專案 ↗</a></div>
   </footer>
   <div class="toast" role="status" aria-live="polite"></div>
-  <script src="script.js?v=20260819-1"></script>
+  <script src="script.js?v=20260819-2"></script>
 </body>
 </html>
