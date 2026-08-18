@@ -35,6 +35,25 @@ function Get-NativeToolVersion {
  return $null
 }
 
+function Get-InstalledDotNet8Sdk {
+ $candidates=@()
+ $command=Get-Command dotnet.exe -ErrorAction SilentlyContinue
+ if($command){$candidates+=$command.Source}
+ $globalDotNet=Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'
+ if(Test-Path -LiteralPath $globalDotNet){$candidates+=$globalDotNet}
+ if($script:InstallerConfig -and ($script:InstallerConfig.PSObject.Properties.Name -contains 'PlayerAdminPath')){
+  $localDotNet=Join-Path $script:InstallerConfig.PlayerAdminPath '.dotnet\dotnet.exe'
+  if(Test-Path -LiteralPath $localDotNet){$candidates+=$localDotNet}
+ }
+ foreach($candidate in @($candidates|Select-Object -Unique)){
+  try{
+   $sdkLine=@(& $candidate --list-sdks 2>$null|Where-Object{$_ -match '^8\.'}|Select-Object -Last 1)
+   if($sdkLine.Count -gt 0){return [pscustomobject]@{Path=$candidate;Version=([string]$sdkLine[0]).Split(' ')[0]}}
+  }catch{}
+ }
+ return $null
+}
+
 function Get-DevelopmentEnvironmentState {
  $states=@()
  $gitVersion=Get-NativeToolVersion 'git.exe' @('--version')
@@ -48,6 +67,8 @@ function Get-DevelopmentEnvironmentState {
  $states+=[pscustomobject]@{Name='7-Zip';Package='7zip';Version=$sevenZipVersion;Installed=![string]::IsNullOrWhiteSpace($sevenZipVersion)}
  $python=Get-InstalledPythonVersion
  $states+=[pscustomobject]@{Name='Python';Package='python';Version=$(if($python){$python.Version}else{$null});Installed=($null-ne$python)}
+ $dotnet=Get-InstalledDotNet8Sdk
+ $states+=[pscustomobject]@{Name='.NET 8 SDK';Package='dotnet-8.0-sdk';Version=$(if($dotnet){$dotnet.Version}else{$null});Installed=($null-ne$dotnet)}
  $vcRuntime=Join-Path $env:WINDIR 'System32\MSVCR110.dll'
  $vcVersion=if(Test-Path -LiteralPath $vcRuntime){(Get-Item -LiteralPath $vcRuntime).VersionInfo.FileVersion}else{$null}
  $states+=[pscustomobject]@{Name='Visual C++ 2012 x64 Runtime';Package='vcredist2012';Version=$vcVersion;Installed=![string]::IsNullOrWhiteSpace($vcVersion)}
@@ -238,7 +259,7 @@ function Install-DevelopmentEnvironment {
  try{$vs=Find-VisualStudioCppEnvironment;$vsVersion=(Get-Item -LiteralPath $vs.MSBuild).VersionInfo.FileVersion;Write-Host ('[OK] Visual Studio C++ Build Tools：{0}' -f $vsVersion) -ForegroundColor Green;$vsOperation='upgrade'}catch{Write-Host '[ ]  Visual Studio C++ Build Tools：無法讀取版本，將下載安裝' -ForegroundColor Yellow;$vsOperation='install'}
  $vsArgs=@('-NoExit','-ExecutionPolicy','Bypass','-Command',"choco $vsOperation visualstudio2022buildtools visualstudio2022-workload-vctools -y --package-parameters='--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.TestAdapterForBoostTest --add Microsoft.VisualStudio.Component.VC.ASAN --add Microsoft.VisualStudio.Component.VC.vcpkg' 2>&1 | Tee-Object -FilePath '$($script:LogsPath)\VSBuildTools.log' -Append")
  Start-Process powershell.exe -Verb RunAs -ArgumentList $vsArgs
- Write-Host '[OK] 基本工具、Python 與 Visual C++ 2012 Runtime 已完成；Visual Studio Build Tools 已在獨立視窗啟動。' -ForegroundColor Green
+ Write-Host '[OK] 基本工具、Python、.NET 8 SDK 與 Visual C++ 2012 Runtime 已完成；Visual Studio Build Tools 已在獨立視窗啟動。' -ForegroundColor Green
 }
 
 function Install-MariaDBEnvironment {

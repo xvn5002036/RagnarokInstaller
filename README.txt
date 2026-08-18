@@ -12,6 +12,7 @@
 - WARP：C:\Server\WARP0716
 - ROenglishRE：C:\Server\ROenglishRE
 - NPC 中文化：C:\Server\rathena-npc-big5
+- 玩家管理後台：C:\Server\RathenaPlayerAdmin（獨立 Git 專案）
 
 主選單
 [1] 安裝 / 更新開發環境
@@ -32,10 +33,22 @@
 [E] 更新 NPC 腳本中文化
 [F] 套用中文化
 [G] 一鍵初始化（不自動啟動）
+[I] 安裝 / 更新 RathenaPlayerAdmin 玩家管理後台
+[J] 啟動 RathenaPlayerAdmin 玩家管理後台
 [0] 離開
+
+玩家管理後台
+- 原始專案：https://github.com/xvn5002036/RathenaPlayerAdmin
+- 後台程式獨立下載到 C:\Server\RathenaPlayerAdmin，不會複製進 Modules，也不會覆蓋 rAthena 或 PandasWS 核心。
+- 選項 [I] 會查詢 GitHub，有新版時更新，沒有新版時顯示目前已是最新版；所需 Microsoft .NET 8 SDK 統一由選項 [1] 管理。
+- 第一次安裝會沿用本安裝器的 MariaDB 主機、連接埠、資料庫與伺服器帳密。
+- 後續更新會保留 C:\Server\RathenaPlayerAdmin\local-settings.json，不會用遠端設定覆蓋本機資料庫設定。
+- 選項 [J] 會執行獨立專案內的 Start.cmd；準備完成後開啟 http://127.0.0.1:5080。
+- 管理介面預設只供本機使用，不要把 5080 連接埠直接公開到網際網路。
 
 開發與執行環境
 - Git、Ninja、7-Zip、Python（先驗證實際版本；損壞時強制修復）。
+- Microsoft .NET 8 SDK（供 RathenaPlayerAdmin 建置與執行）。
 - Python 採無人值守安裝；Chocolatey 來源失效時自動改用 Python 官方安裝程式。
 - Python 安裝完成後以非互動模式讀取版本，不會停在 Python 輸入畫面。
 - Visual Studio 2022 Build Tools、MSVC v143 與 Windows SDK。

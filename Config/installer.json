@@ -1,5 +1,5 @@
 ﻿{
-    "SchemaVersion":  2,
+    "SchemaVersion":  3,
     "Emulator":  "rAthena",
     "RootPath":  "C:\\Server",
     "RAthenaPath":  "C:\\Server\\rAthena",
@@ -7,6 +7,7 @@
     "ClientPatchPath":  "C:\\Server\\WARP0716",
     "ROenglishREPath":  "C:\\Server\\ROenglishRE",
     "NpcBig5Path":  "C:\\Server\\rathena-npc-big5",
+    "PlayerAdminPath":  "C:\\Server\\RathenaPlayerAdmin",
     "PacketVersion":  20260107,
     "Repositories":  {
                          "RAthena":  {
@@ -28,6 +29,10 @@
                          "NpcBig5":  {
                                          "Url":  "https://github.com/xvn5002036/rathena-npc-big5.git",
                                          "Branch":  "main"
+                                     },
+                         "PlayerAdmin":  {
+                                             "Url":  "https://github.com/xvn5002036/RathenaPlayerAdmin.git",
+                                             "Branch":  "main"
                                      }
                      },
     "Database":  {
