@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 中文化套用：將已下載的英文客戶端資源與繁中 NPC 腳本複製到正確位置。 #>
 function Apply-RagnarokLocalization {
  param([switch]$SkipRemoteCheck)
  $c=$script:InstallerConfig;$core=Get-CoreInfo

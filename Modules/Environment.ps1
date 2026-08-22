@@ -1,5 +1,6 @@
 ﻿Set-StrictMode -Version 2.0
 
+<# 環境安裝：偵測、安裝或修復 Git、Python、.NET、Visual Studio 與 MariaDB。 #>
 function Ensure-Chocolatey {
  if(Test-Command choco){return}
  Write-Host '[..] 安裝 Chocolatey...'

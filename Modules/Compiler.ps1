@@ -1,5 +1,6 @@
 ﻿Set-StrictMode -Version 2.0
 
+<# 編譯工具：尋找 Visual Studio，檢查 rAthena 專案，並執行 Build 或 Clean。 #>
 function Get-VsWherePath {
  $paths=@()
  if(${env:ProgramFiles(x86)}){$paths+=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'}

@@ -1,4 +1,8 @@
 ﻿#requires -Version 5.1
+<#
+安裝管理中心的進入點：載入 Modules 資料夾內的功能模組，顯示選單，並依使用者選項呼叫對應功能。
+按 ? 可在程式內查看每個選項與模組的中文說明。
+#>
 [CmdletBinding()]param()
 Set-StrictMode -Version 2.0;$ErrorActionPreference='Stop'
 $script:AppPath=Split-Path -Parent $MyInvocation.MyCommand.Path;$script:ConfigPath=Join-Path $script:AppPath 'Config';$script:LogsPath=Join-Path $script:AppPath 'Logs';$script:ConfigFile=Join-Path $script:ConfigPath 'installer.json';$script:MenuNotice='';$script:ShowSystemDetails=$false
@@ -39,9 +43,10 @@ function Show-MainMenu {
  Write-Host '[C] 啟動伺服器';Write-Host '    開啟 C:\Server\rAthena\runserver.bat，由它啟動並監看所有伺服器。' -ForegroundColor DarkGray
  Write-Host '[H] 停止伺服器';Write-Host '    停止目前正在執行的 Ragnarok 伺服器程式。' -ForegroundColor DarkGray
  Write-Host '[G] 一鍵初始化（不自動啟動）';Write-Host '    依序準備環境、核心、資料庫與設定，完成後不啟動伺服器。' -ForegroundColor DarkGray
+ Write-Host '[?] 功能與腳本說明';Write-Host '    查看每個選項會執行的工作，以及 Modules 資料夾的用途。' -ForegroundColor DarkGray
  Write-Host '[0] 離開';Write-Host '    關閉 Ragnarok 安裝管理中心。' -ForegroundColor DarkGray
  Write-Host '========================================================' -ForegroundColor Cyan
  if($script:ShowSystemDetails){Show-InstallerConfig;Write-Host '========================================================' -ForegroundColor Cyan;$script:ShowSystemDetails=$false}
 }
-$run=$true;while($run){Show-MainMenu;$choice=Read-MenuChoice;try{switch($choice){'1'{Install-DevelopmentEnvironment}'2'{Install-MariaDBEnvironment}'3'{Update-ServerRepository}'4'{Build-RagnarokServer}'5'{Clear-RagnarokBuild}'6'{Update-ClientPatchRepository}'7'{Initialize-RagnarokDatabase}'8'{Initialize-RAthenaConfig}'9'{$script:ShowSystemDetails=$true}'A'{Open-LogsFolder}'L'{Clear-InstallerLogs}'B'{Remove-RagnarokInstallation}'C'{Start-RagnarokServer}'H'{Stop-RagnarokServer}'D'{Update-ROenglishRERepository}'E'{Update-NpcBig5Repository}'F'{Apply-RagnarokLocalization}'G'{Invoke-OneClickSetup}'I'{Install-OrUpdatePlayerAdmin}'J'{Start-PlayerAdmin}'0'{$run=$false}default{Write-Host '[X] 無效選項。' -ForegroundColor Red;Start-Sleep 1}}}catch{Write-Host ('[X] {0}' -f $_.Exception.Message) -ForegroundColor Red;Write-Log $_.Exception.ToString() 'ERROR';Start-Sleep 2}}
+$run=$true;while($run){Show-MainMenu;$choice=Read-MenuChoice;try{switch($choice){'1'{Install-DevelopmentEnvironment}'2'{Install-MariaDBEnvironment}'3'{Update-ServerRepository}'4'{Build-RagnarokServer}'5'{Clear-RagnarokBuild}'6'{Update-ClientPatchRepository}'7'{Initialize-RagnarokDatabase}'8'{Initialize-RAthenaConfig}'9'{$script:ShowSystemDetails=$true}'A'{Open-LogsFolder}'L'{Clear-InstallerLogs}'B'{Remove-RagnarokInstallation}'C'{Start-RagnarokServer}'H'{Stop-RagnarokServer}'D'{Update-ROenglishRERepository}'E'{Update-NpcBig5Repository}'F'{Apply-RagnarokLocalization}'G'{Invoke-OneClickSetup}'I'{Install-OrUpdatePlayerAdmin}'J'{Start-PlayerAdmin}'?'{Show-FeatureGuide}'0'{$run=$false}default{Write-Host '[X] 無效選項。' -ForegroundColor Red;Start-Sleep 1}}}catch{Write-Host ('[X] {0}' -f $_.Exception.Message) -ForegroundColor Red;Write-Log $_.Exception.ToString() 'ERROR';Start-Sleep 2}}
 Write-Log 'Ragnarok 安裝管理中心已結束。'

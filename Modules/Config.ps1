@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 設定管理：讀寫 installer.json，保存安裝路徑、核心、資料庫與 Player Admin 設定。 #>
 function New-DefaultInstallerConfig {
  [pscustomobject]@{
   SchemaVersion=3; Emulator='rAthena'; RootPath='C:\Server'; RAthenaPath='C:\Server\rAthena'; PandasWSPath='C:\Server\PandasWS'; ClientPatchPath='C:\Server\WARP0716'; ROenglishREPath='C:\Server\ROenglishRE'; NpcBig5Path='C:\Server\rathena-npc-big5'; PlayerAdminPath='C:\Server\RathenaPlayerAdmin'; PacketVersion=20260107

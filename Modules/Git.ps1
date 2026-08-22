@@ -1,5 +1,6 @@
 ﻿Set-StrictMode -Version 2.0
 
+<# Git 更新：下載、更新與比對 rAthena、WARP、語言資源等 GitHub 專案。 #>
 function ConvertTo-GitBashArgument {
  param([Parameter(Mandatory=$true)][string]$Value)
  # The installer repository URLs and destination paths are configuration values;

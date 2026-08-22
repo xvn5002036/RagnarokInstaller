@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 共用工具：系統管理員檢查、外部程式執行、檔案複製、讀取輸入與系統偵測。 #>
 function Test-IsAdministrator { $p=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) }
 function Assert-Administrator { if(-not(Test-IsAdministrator)){throw '請以系統管理員身分執行 Start.cmd。'} }
 function Initialize-ApplicationDirectories { foreach($p in @($script:ConfigPath,$script:LogsPath,$script:InstallerConfig.RootPath)){if($p -and -not(Test-Path -LiteralPath $p)){New-Item -ItemType Directory -Path $p -Force|Out-Null}} }

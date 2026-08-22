@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 資料庫操作：呼叫 MariaDB，建立遊戲資料庫並匯入 rAthena 所需 SQL。 #>
 function Find-MariaDbClient {
  $c=Get-Command mariadb.exe -ErrorAction SilentlyContinue; if($c){return $c.Source}; $c=Get-Command mysql.exe -ErrorAction SilentlyContinue; if($c){return $c.Source}
  $hits=Get-ChildItem 'C:\Program Files\MariaDB*\bin\mariadb.exe','C:\Program Files\MariaDB*\bin\mysql.exe' -ErrorAction SilentlyContinue|Select-Object -First 1; if($hits){return $hits.FullName}; throw '找不到 mariadb.exe / mysql.exe。'
