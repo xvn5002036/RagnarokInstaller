@@ -17,39 +17,47 @@ function Write-PlayerAdminSettings {
 
 function Install-OrUpdatePlayerAdmin {
  $path=[string]$script:InstallerConfig.PlayerAdminPath
- $repository=$script:InstallerConfig.Repositories.PlayerAdmin
+ $sourcePath=Join-Path $script:AppPath 'Tools\RathenaPlayerAdmin'
  $settingsPath=Join-Path $path 'local-settings.json'
- $hadRepository=Test-Path -LiteralPath (Join-Path $path '.git')
  $savedSettings=$null
- if($hadRepository -and (Test-Path -LiteralPath $settingsPath -PathType Leaf)){
+ if(Test-Path -LiteralPath $settingsPath -PathType Leaf){
   $savedSettings=[IO.File]::ReadAllText($settingsPath,[Text.Encoding]::UTF8)
  }
 
- try{
-  $null=Update-GitRepository 'RathenaPlayerAdmin' $repository.Url $repository.Branch $path
+ if(-not(Test-Path -LiteralPath (Join-Path $sourcePath 'RathenaPlayerAdmin.csproj') -PathType Leaf)){
+  throw ('安裝器內建的 RathenaPlayerAdmin 原始碼不完整：{0}' -f $sourcePath)
  }
- finally{
-  if($null -ne $savedSettings -and (Test-Path -LiteralPath $path)){
-   [IO.File]::WriteAllText($settingsPath,$savedSettings,(New-Object Text.UTF8Encoding($false)))
-  }
- }
-
- if(-not$hadRepository){Write-PlayerAdminSettings -Path $settingsPath}
- if(-not(Test-Path -LiteralPath (Join-Path $path 'Start.cmd') -PathType Leaf)){throw ('玩家管理後台缺少啟動檔：{0}' -f (Join-Path $path 'Start.cmd'))}
- $dotnet=Get-InstalledDotNet8Sdk
- if(-not$dotnet){throw '尚未安裝 .NET 8 SDK，請先執行 [1] 安裝 / 更新開發環境。'}
- Write-Host ('[OK] .NET 8 SDK：{0}（{1}）' -f $dotnet.Version,$dotnet.Path) -ForegroundColor Green
+ Write-Host '[..] 正在從安裝器內建版本更新玩家管理後台...' -ForegroundColor Cyan
+ Copy-DirectoryContent -Source $sourcePath -Destination $path -Exclude @('.git','bin','obj','artifacts','.dotnet','local-settings.json')
+ if($null -ne $savedSettings){
+  [IO.File]::WriteAllText($settingsPath,$savedSettings,(New-Object Text.UTF8Encoding($false)))
+ } else {Write-PlayerAdminSettings -Path $settingsPath}
+ if(-not(Test-Path -LiteralPath (Join-Path $sourcePath 'Start.ps1') -PathType Leaf)){throw ('玩家管理後台缺少環境準備檔：{0}' -f (Join-Path $sourcePath 'Start.ps1'))}
+ Write-Host '[..] 正在確認玩家管理後台的 .NET 8 執行環境...' -ForegroundColor Cyan
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $sourcePath 'Start.ps1') -SetupOnly
+ if($LASTEXITCODE -ne 0){throw '玩家管理後台的 .NET 8 執行環境準備失敗。'}
  Write-Host ('[OK] 玩家管理後台位置：{0}' -f $path) -ForegroundColor Green
- Write-Host '[i] 此專案獨立安裝，不會修改 rAthena 或 PandasWS 核心檔案。' -ForegroundColor Cyan
+ Write-Host '[i] 後台版本由本安裝器管理；更新安裝器後按 [I] 即可套用新版。' -ForegroundColor Cyan
 }
 
 function Start-PlayerAdmin {
- $path=[string]$script:InstallerConfig.PlayerAdminPath
- $startPath=Join-Path $path 'Start.cmd'
- if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '尚未安裝玩家管理後台，請先執行 [I]。'}
- if(-not(Get-InstalledDotNet8Sdk)){throw '尚未安裝 .NET 8 SDK，請先執行 [1] 安裝 / 更新開發環境。'}
- Start-Process -FilePath $startPath -WorkingDirectory $path
- $script:MenuNotice='玩家管理後台已啟動；準備完成後會開啟 http://127.0.0.1:5080。'
+ $installedPath=[string]$script:InstallerConfig.PlayerAdminPath
+ $path=Join-Path $script:AppPath 'Tools\RathenaPlayerAdmin'
+ $startPath=Join-Path $path 'Start.ps1'
+ $sourceSettings=Join-Path $path 'local-settings.json'
+ $installedSettings=Join-Path $installedPath 'local-settings.json'
+ if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '安裝器內建的玩家管理後台不完整，請重新下載安裝器專案。'}
+ if(Test-Path -LiteralPath $installedSettings -PathType Leaf){
+  Copy-Item -LiteralPath $installedSettings -Destination $sourceSettings -Force
+ } elseif(-not(Test-Path -LiteralPath $sourceSettings -PathType Leaf)){
+  Write-PlayerAdminSettings -Path $sourceSettings
+ }
+ # Invoke the exact bundled script, rather than a .cmd launcher that could
+ # resolve to an older installed copy on a user's PATH or open console.
+ $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$startPath+'"'
+ Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WorkingDirectory $path
+ $script:MenuNotice='玩家管理後台已從 Tools\RathenaPlayerAdmin 啟動；準備完成後會開啟 http://127.0.0.1:5080。'
  Write-Host ('[OK] 已開啟：{0}' -f $startPath) -ForegroundColor Green
+ Write-Host ('[i] 使用路徑：{0}' -f $path) -ForegroundColor Cyan
  Write-Host '[i] 後台只供本機使用；請勿將 5080 連接埠直接公開到網際網路。' -ForegroundColor Yellow
 }
