@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
@@ -27,9 +28,15 @@ var mapIndexCandidates = new[]
     Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "map_index.txt")),
     @"C:\Server\rAthena\db\map_index.txt"
 };
+var mapInfoCandidates = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, "mapInfo_true.lub"),
+    Path.Combine(builder.Environment.ContentRootPath, "System", "mapInfo_true.lub"),
+    @"C:\Server\WARP0716\System\mapInfo_true.lub"
+};
 builder.Services.AddSingleton(new AtCommandCatalog(atCommandCandidates.FirstOrDefault(File.Exists)));
 builder.Services.AddSingleton(new JobCatalog(jobDefinitionCandidates.FirstOrDefault(File.Exists)));
-builder.Services.AddSingleton(new MapCatalog(mapIndexCandidates.FirstOrDefault(File.Exists)));
+builder.Services.AddSingleton(new MapCatalog(mapIndexCandidates.FirstOrDefault(File.Exists), mapInfoCandidates.FirstOrDefault(File.Exists)));
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -739,18 +746,19 @@ sealed class MapCatalog
     private readonly HashSet<string> _names;
     public IReadOnlyList<MapDefinition> Maps { get; }
 
-    public MapCatalog(string? path)
+    public MapCatalog(string? path, string? mapInfoPath)
     {
         var maps = new List<MapDefinition>();
         _names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (path is null || !File.Exists(path)) { Maps = maps; return; }
+        var chineseNames = LoadChineseNames(mapInfoPath);
         foreach (var rawLine in File.ReadLines(path))
         {
             var line = rawLine.Trim();
             if (line.Length == 0 || line.StartsWith("//")) continue;
             var name = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0];
             if (!Regex.IsMatch(name, @"^[A-Za-z0-9_@-]{1,15}$") || !_names.Add(name)) continue;
-            maps.Add(new MapDefinition(name, DisplayName(name), Category(name)));
+            maps.Add(new MapDefinition(name, DisplayName(name, chineseNames), Category(name)));
         }
         Maps = maps.OrderBy(map => map.Category).ThenBy(map => map.Name).ToArray();
     }
@@ -775,7 +783,27 @@ sealed class MapCatalog
         return "其他";
     }
 
-    private static string DisplayName(string name)
+    private static IReadOnlyDictionary<string, string> LoadChineseNames(string? mapInfoPath)
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (mapInfoPath is null || !File.Exists(mapInfoPath)) return names;
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            var text = File.ReadAllText(mapInfoPath, Encoding.GetEncoding(950));
+            var expression = new Regex(@"\[\s*""(?<file>[^""]+)\.rsw""\s*\]\s*=\s*\{[\s\S]*?displayName\s*=\s*""(?<display>(?:\\.|[^""])*)""", RegexOptions.CultureInvariant);
+            foreach (Match match in expression.Matches(text))
+            {
+                var mapName = Path.GetFileNameWithoutExtension(match.Groups["file"].Value).Trim();
+                var displayName = Regex.Unescape(match.Groups["display"].Value).Trim();
+                if (mapName.Length > 0 && displayName.Length > 0) names[mapName] = displayName;
+            }
+        }
+        catch { /* Use the built-in translations if a client map file is unavailable or malformed. */ }
+        return names;
+    }
+
+    private static string DisplayName(string name, IReadOnlyDictionary<string, string> chineseNames)
     {
         var known = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -786,6 +814,7 @@ sealed class MapCatalog
             ["lhz"]="里希塔樂鎮", ["hugel"]="毀葛", ["rachel"]="拉赫", ["veins"]="菲音斯",
             ["malangdo"]="綿綿島", ["mora"]="穆拉村", ["eclage"]="埃克拉珠", ["lasagna"]="羅紮納"
         };
+        if (chineseNames.TryGetValue(name, out var clientName)) return clientName;
         return known.TryGetValue(name, out var display) ? display : name;
     }
 }
