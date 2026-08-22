@@ -50,7 +50,7 @@ function Initialize-RagnarokDatabase {
  if($importBaseSql){foreach($i in $list){$f=Join-Path $sqlDir $i[0];if(Test-Path $f){Write-Host ('[..] 匯入 {0}' -f $i[0]);Invoke-MariaDbSql '' $i[1] $f}else{Write-Host ('[-] 略過不存在檔案：{0}' -f $i[0]) -ForegroundColor DarkYellow}}}
  $loginTableCount=[int](Get-MariaDbScalar ("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='{0}' AND table_name='login';" -f $mainName))
  if($loginTableCount -eq 0){throw '現有資料庫缺少 login 資料表，可能是先前匯入中斷。請重新執行第 7 項並選擇 [2] 全新建立。'}
- $post="UPDATE login SET userid='froggos1', user_pass='froggop1' WHERE account_id=1; INSERT INTO login (account_id,userid,user_pass,sex,email,group_id,state) VALUES (2000000,'test','test','M','a@a.com',99,0) ON DUPLICATE KEY UPDATE userid='test',user_pass='test',group_id=99,state=0;"
+ $post="UPDATE login SET userid='froggos1', user_pass='froggop1' WHERE account_id=1; INSERT INTO login (account_id,userid,user_pass,sex,email,group_id,state) VALUES (2000000,'test','123456','M','a@a.com',99,0) ON DUPLICATE KEY UPDATE userid='test',user_pass='test',group_id=99,state=0;"
  Invoke-MariaDbSql $post $d.MainDatabase
  Write-Host '[OK] 資料庫建立與匯入完成。' -ForegroundColor Green
 }
