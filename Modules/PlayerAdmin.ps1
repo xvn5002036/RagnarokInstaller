@@ -41,12 +41,21 @@ function Install-OrUpdatePlayerAdmin {
 }
 
 function Start-PlayerAdmin {
- $path=[string]$script:InstallerConfig.PlayerAdminPath
+ $installedPath=[string]$script:InstallerConfig.PlayerAdminPath
+ $path=Join-Path $script:AppPath 'Tools\RathenaPlayerAdmin'
  $startPath=Join-Path $path 'Start.cmd'
- if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '尚未安裝玩家管理後台，請先執行 [I]。'}
+ $sourceSettings=Join-Path $path 'local-settings.json'
+ $installedSettings=Join-Path $installedPath 'local-settings.json'
+ if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '安裝器內建的玩家管理後台不完整，請重新下載安裝器專案。'}
+ if(Test-Path -LiteralPath $installedSettings -PathType Leaf){
+  Copy-Item -LiteralPath $installedSettings -Destination $sourceSettings -Force
+ } elseif(-not(Test-Path -LiteralPath $sourceSettings -PathType Leaf)){
+  Write-PlayerAdminSettings -Path $sourceSettings
+ }
  if(-not(Get-InstalledDotNet8Sdk)){throw '尚未安裝 .NET 8 SDK，請先執行 [1] 安裝 / 更新開發環境。'}
  Start-Process -FilePath $startPath -WorkingDirectory $path
- $script:MenuNotice='玩家管理後台已啟動；準備完成後會開啟 http://127.0.0.1:5080。'
+ $script:MenuNotice='玩家管理後台已從 Tools\RathenaPlayerAdmin 啟動；準備完成後會開啟 http://127.0.0.1:5080。'
  Write-Host ('[OK] 已開啟：{0}' -f $startPath) -ForegroundColor Green
+ Write-Host ('[i] 使用路徑：{0}' -f $path) -ForegroundColor Cyan
  Write-Host '[i] 後台只供本機使用；請勿將 5080 連接埠直接公開到網際網路。' -ForegroundColor Yellow
 }
