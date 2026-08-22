@@ -34,9 +34,25 @@ var mapInfoCandidates = new[]
     Path.Combine(builder.Environment.ContentRootPath, "System", "mapInfo_true.lub"),
     @"C:\Server\WARP0716\System\mapInfo_true.lub"
 };
+var mobDatabaseCandidates = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, "mob_db.yml"),
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "re", "mob_db.yml")),
+    @"C:\Server\rAthena\db\re\mob_db.yml"
+};
+var mobSpawnDirectoryCandidates = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, "npc", "re", "mobs"),
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "npc", "re", "mobs")),
+    @"C:\Server\rAthena\npc\re\mobs"
+};
 builder.Services.AddSingleton(new AtCommandCatalog(atCommandCandidates.FirstOrDefault(File.Exists)));
 builder.Services.AddSingleton(new JobCatalog(jobDefinitionCandidates.FirstOrDefault(File.Exists)));
-builder.Services.AddSingleton(new MapCatalog(mapIndexCandidates.FirstOrDefault(File.Exists), mapInfoCandidates.FirstOrDefault(File.Exists)));
+builder.Services.AddSingleton(new MonsterCatalog(mobDatabaseCandidates.FirstOrDefault(File.Exists), mobSpawnDirectoryCandidates.FirstOrDefault(Directory.Exists)));
+builder.Services.AddSingleton(serviceProvider => new MapCatalog(
+    mapIndexCandidates.FirstOrDefault(File.Exists),
+    mapInfoCandidates.FirstOrDefault(File.Exists),
+    serviceProvider.GetRequiredService<MonsterCatalog>()));
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -741,12 +757,80 @@ sealed class AtCommandCatalog
     }
 }
 
+sealed class MonsterCatalog
+{
+    private readonly IReadOnlyDictionary<string, IReadOnlyList<MapMonsterDefinition>> _byMap;
+
+    public MonsterCatalog(string? mobDatabasePath, string? spawnDirectory)
+    {
+        var mobs = LoadMobDefinitions(mobDatabasePath);
+        _byMap = LoadMapMonsters(spawnDirectory, mobs);
+    }
+
+    public IReadOnlyList<MapMonsterDefinition> ForMap(string mapName) =>
+        _byMap.TryGetValue(mapName, out var monsters) ? monsters : Array.Empty<MapMonsterDefinition>();
+
+    private static IReadOnlyDictionary<int, MobDefinition> LoadMobDefinitions(string? path)
+    {
+        var mobs = new Dictionary<int, MobDefinition>();
+        if (path is null || !File.Exists(path)) return mobs;
+        try
+        {
+            var text = File.ReadAllText(path);
+            var entries = new Regex(@"(?ms)^\s*-\s*Id:\s*(?<id>\d+)\s*$\s*(?<body>.*?)(?=^\s*-\s*Id:|\z)");
+            foreach (Match entry in entries.Matches(text))
+            {
+                var body = entry.Groups["body"].Value;
+                var name = Regex.Match(body, @"(?m)^\s*Name:\s*(?<name>.+?)\s*$").Groups["name"].Value.Trim().Trim('"');
+                var levelText = Regex.Match(body, @"(?m)^\s*Level:\s*(?<level>\d+)\s*$").Groups["level"].Value;
+                if (name.Length == 0 || !int.TryParse(levelText, out var level)) continue;
+                mobs[int.Parse(entry.Groups["id"].Value)] = new MobDefinition(name, level);
+            }
+        }
+        catch { /* The map page remains available even when a custom mob database is malformed. */ }
+        return mobs;
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<MapMonsterDefinition>> LoadMapMonsters(
+        string? directory, IReadOnlyDictionary<int, MobDefinition> mobs)
+    {
+        var result = new Dictionary<string, Dictionary<int, int>>(StringComparer.OrdinalIgnoreCase);
+        if (directory is null || !Directory.Exists(directory)) return new Dictionary<string, IReadOnlyList<MapMonsterDefinition>>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(directory, "*.txt", SearchOption.AllDirectories))
+            foreach (var rawLine in File.ReadLines(file))
+            {
+                var fields = rawLine.Split('\t');
+                if (fields.Length < 4 || !string.Equals(fields[1].Trim(), "monster", StringComparison.OrdinalIgnoreCase)) continue;
+                var mapName = fields[0].Split(',', 2)[0].Trim();
+                var values = fields[3].Trim().Split(',', StringSplitOptions.TrimEntries);
+                if (mapName.Length == 0 || values.Length < 2 || !int.TryParse(values[0], out var mobId) || !int.TryParse(values[1], out var amount)) continue;
+                if (!mobs.ContainsKey(mobId) || amount <= 0) continue;
+                if (!result.TryGetValue(mapName, out var mapMonsters)) result[mapName] = mapMonsters = new Dictionary<int, int>();
+                mapMonsters[mobId] = mapMonsters.GetValueOrDefault(mobId) + amount;
+            }
+        }
+        catch { /* A single unreadable NPC file should not prevent the player admin from starting. */ }
+
+        return result.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<MapMonsterDefinition>)pair.Value
+                .Where(monster => mobs.ContainsKey(monster.Key))
+                .Select(monster => new MapMonsterDefinition(monster.Key, mobs[monster.Key].Name, mobs[monster.Key].Level, monster.Value))
+                .OrderBy(monster => monster.Level).ThenBy(monster => monster.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private record MobDefinition(string Name, int Level);
+}
+
 sealed class MapCatalog
 {
     private readonly HashSet<string> _names;
     public IReadOnlyList<MapDefinition> Maps { get; }
 
-    public MapCatalog(string? path, string? mapInfoPath)
+    public MapCatalog(string? path, string? mapInfoPath, MonsterCatalog monsters)
     {
         var maps = new List<MapDefinition>();
         _names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -758,7 +842,7 @@ sealed class MapCatalog
             if (line.Length == 0 || line.StartsWith("//")) continue;
             var name = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0];
             if (!Regex.IsMatch(name, @"^[A-Za-z0-9_@-]{1,15}$") || !_names.Add(name)) continue;
-            maps.Add(new MapDefinition(name, DisplayName(name, chineseNames), Category(name)));
+            maps.Add(new MapDefinition(name, DisplayName(name, chineseNames), Category(name), monsters.ForMap(name)));
         }
         Maps = maps.OrderBy(map => map.Category).ThenBy(map => map.Name).ToArray();
     }
@@ -891,7 +975,8 @@ record JobDefinition(int Id, string Name, string Category, string Description, b
 
 record AtCommandDefinition(string Category, string Name, string Usage, string Description, string DescriptionZh);
 record AtCommandRequest(int ExecutorCharId, string Command);
-record MapDefinition(string Name, string DisplayName, string Category);
+record MapMonsterDefinition(int Id, string Name, int Level, int Amount);
+record MapDefinition(string Name, string DisplayName, string Category, IReadOnlyList<MapMonsterDefinition> Monsters);
 
 record CharacterStats(int Str, int Agi, int Vit, int IntStat, int Dex, int Luk,
     int Pow, int Sta, int Wis, int Spl, int Con, int Crt,
