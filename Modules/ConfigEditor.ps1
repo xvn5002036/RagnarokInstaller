@@ -69,10 +69,27 @@ OnInit:
 	end;
 
 OnTimer500:
-	.@count = query_sql("SELECT `id`,`account_id`,`job_id` FROM `dotnet_admin_jobchange_queue` WHERE `processed_at` IS NULL ORDER BY `id` LIMIT 20", .@request_id, .@account_id, .@job_id);
+	.@count = query_sql("SELECT `id`,`account_id`,`char_id`,`job_id` FROM `dotnet_admin_jobchange_queue` WHERE `processed_at` IS NULL ORDER BY `id` LIMIT 20", .@request_id, .@account_id, .@char_id, .@job_id);
 	for (.@i = 0; .@i < .@count; ++.@i) {
-		if (attachrid(.@account_id[.@i])) {
-			jobchange .@job_id[.@i];
+		// Use the script command's explicit char_id argument. attachrid(account_id)
+		// can attach a different online character from the same account, making the
+		// requested character appear unchanged (usually still a novice).
+		if (isloggedin(.@account_id[.@i], .@char_id[.@i]) && attachrid(.@account_id[.@i])) {
+			if (getcharid(0) == .@char_id[.@i]) {
+				.@old_class = Class;
+				jobchange .@job_id[.@i], -1, .@char_id[.@i];
+				// Only fill the new skill tree after pc_jobchange actually changed Class.
+				// Raise Job Level first so rAthena keeps the maxed skill tree after
+				// a skill-tree reload. @joblvl clamps oversized values to the class max.
+				if (Class != .@old_class) {
+					atcommand "@joblvl 1000";
+					atcommand "@skillall";
+					// @skillall updates map-server memory but does not call chrif_save.
+					// @save persists the learned skills immediately instead of waiting
+					// for a later autosave or logout.
+					atcommand "@save";
+				}
+			}
 			detachrid;
 		}
 		query_sql("UPDATE `dotnet_admin_jobchange_queue` SET `processed_at`=NOW() WHERE `id`=" + .@request_id[.@i]);
@@ -117,6 +134,8 @@ OnTimer500:
  if(-not[regex]::IsMatch([IO.File]::ReadAllText($scriptsCustomPath,[Text.Encoding]::UTF8),$includePattern)){throw 'scripts_custom.conf 未成功加入 dotnet_admin_kick.txt。'}
  $writtenBridge=[IO.File]::ReadAllText($bridgePath,[Text.Encoding]::UTF8)
  if($writtenBridge -notmatch 'dotnet_admin_kick_queue' -or $writtenBridge -notmatch 'dotnet_admin_jobchange_queue' -or $writtenBridge -notmatch 'dotnet_admin_atcommand_queue'){throw 'dotnet_admin_kick.txt 內容驗證失敗。'}
+ if($writtenBridge -notmatch 'isloggedin\(\.@account_id\[\.@i\], \.@char_id\[\.@i\]\)' -or $writtenBridge -notmatch 'jobchange \.@job_id\[\.@i\], -1, \.@char_id\[\.@i\]'){throw 'dotnet_admin_kick.txt 未使用指定角色的 char_id 執行轉職。'}
+ if($writtenBridge -notmatch 'if \(Class != \.@old_class\)' -or $writtenBridge -notmatch 'atcommand "@joblvl 1000"' -or $writtenBridge -notmatch 'atcommand "@skillall"' -or $writtenBridge -notmatch 'atcommand "@save"'){throw 'dotnet_admin_kick.txt 未在轉職成功後提升 Job Level、補滿技能並立即保存。'}
  Write-Host '[OK] RathenaPlayerAdmin NPC bridge 已建立並加入 scripts_custom.conf。' -ForegroundColor Green
 }
 

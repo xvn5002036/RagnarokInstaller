@@ -1,5 +1,36 @@
 ﻿Set-StrictMode -Version 2.0
 
+function ConvertTo-GitBashArgument {
+ param([Parameter(Mandatory=$true)][string]$Value)
+ # The installer repository URLs and destination paths are configuration values;
+ # double quotes keep the normal Windows paths together for Git Bash.
+ return '"'+$Value.Replace('"','\"')+'"'
+}
+
+function Get-GitBashPath {
+ $git=Get-Command git.exe -ErrorAction SilentlyContinue
+ if(-not$git){return $null}
+ $gitRoot=Split-Path (Split-Path $git.Source -Parent) -Parent
+ # git-bash.exe is only a launcher and returns before the clone has finished.
+ # Run bash.exe itself so the installer can wait for the real Git exit code.
+ $bashPath=Join-Path $gitRoot 'bin\bash.exe'
+ if(Test-Path -LiteralPath $bashPath -PathType Leaf){return $bashPath}
+ return $null
+}
+
+function Invoke-VisibleGitCommand {
+ param([Parameter(Mandatory=$true)][string[]]$Arguments,[Parameter(Mandatory=$true)][string]$Name)
+ $gitBash=Get-GitBashPath
+ if(-not$gitBash){return $false}
+ $command='exec git '+(($Arguments|ForEach-Object{ConvertTo-GitBashArgument ([string]$_)}) -join ' ')
+ Write-Host ('[..] 正在以 Git Bash 視窗處理 {0}；視窗會顯示即時 Git 訊息。' -f $Name) -ForegroundColor Cyan
+ $bashArguments='-lc "'+($command -replace '"','\"')+'"'
+ $process=Start-Process -FilePath $gitBash -ArgumentList $bashArguments -PassThru
+ $process.WaitForExit()
+ if($process.ExitCode -ne 0){throw ('Git 處理失敗（錯誤碼 {0}）：{1}' -f $process.ExitCode,$Name)}
+ return $true
+}
+
 function Invoke-GitMonitored {
  param([string[]]$Arguments,[string]$Name,[string]$Destination='')
  $git=Get-Command git.exe -ErrorAction SilentlyContinue
@@ -10,6 +41,12 @@ function Invoke-GitMonitored {
  $stderrPath=Join-Path $script:LogsPath ('.git-{0}.err' -f $captureId)
  $quoted=@($Arguments|ForEach-Object{if($_ -match '[\s"]'){'"'+($_ -replace '"','\"')+'"'}else{$_}})
  Write-Log -Message ('執行：git {0}' -f ($quoted -join ' ')) -FileName 'Git.log'
+ # Show every Git operation in Git Bash: clone, fetch, checkout, and reset.
+ # This applies equally to rAthena, WARP, ROenglishRE, and NPC 中文化.
+ if(Invoke-VisibleGitCommand -Arguments $Arguments -Name $Name){
+  Write-Log -Message ('Git Bash 已完成：{0}' -f $Name) -FileName 'Git.log'
+  return
+ }
  $env:GIT_PROGRESS_DELAY='0'
  $process=Start-Process -FilePath $git.Source -ArgumentList ($quoted -join ' ') -NoNewWindow -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
  [void]$process.Handle
@@ -20,7 +57,11 @@ function Invoke-GitMonitored {
    if($Destination -and (Test-Path -LiteralPath $Destination)){
     $packPath=Join-Path $Destination '.git\objects\pack'
     if(Test-Path -LiteralPath $packPath){
-     $bytes=(Get-ChildItem -LiteralPath $packPath -File -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum
+     # Measure-Object has no Sum property when Git has not created a pack file
+     # yet. Keep monitoring instead of terminating the active clone process.
+     $packFiles=@(Get-ChildItem -LiteralPath $packPath -File -ErrorAction SilentlyContinue)
+     $bytes=0
+     if($packFiles.Count -gt 0){$bytes=[long](($packFiles|Measure-Object Length -Sum).Sum)}
      if($bytes){$sizeText=('，已接收約 {0:N1} MB' -f ($bytes/1MB))}
     }
    }
@@ -88,7 +129,18 @@ function Update-GitRepository {
   if($behind -gt 0){$script:MenuNotice=('{0} 已更新 {1} 個版本（目前 {2}），並覆蓋 {3} 個本機修改。' -f $Name,$behind,$shortCommit,$localChangeCount)}
   elseif($localChangeCount -gt 0){$script:MenuNotice=('{0} 遠端已是最新版（{1}），並已覆蓋 {2} 個本機修改。' -f $Name,$shortCommit,$localChangeCount)}
   else{$script:MenuNotice=('{0} 已是最新版（{1}）。' -f $Name,$shortCommit);Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green;return $false}
- } elseif(Test-Path $Path){throw ('目錄已存在但不是 Git 儲存庫：{0}' -f $Path)}
+ } elseif(Test-Path $Path){
+  # A cancelled/failed clone can leave an empty destination behind. It has no
+  # user files to preserve, so remove only that verified empty folder and retry.
+  $entries=@(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)
+  if($entries.Count -eq 0){
+   Write-Host ('[!] 偵測到未完成下載留下的空資料夾，將重新下載：{0}' -f $Path) -ForegroundColor Yellow
+   Remove-Item -LiteralPath $Path -Force
+   Update-GitRepository $Name $Url $Branch $Path
+   return $true
+  }
+  throw ('目錄已存在但不是 Git 儲存庫：{0}' -f $Path)
+ }
  else{
   Write-Host ('[..] 下載 {0}...' -f $Name)
   Invoke-GitMonitored @('clone','--progress','--verbose','--branch',$Branch,'--single-branch',$Url,$Path) ("下載 $Name") $Path
