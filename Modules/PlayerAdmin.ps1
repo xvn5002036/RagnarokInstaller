@@ -43,7 +43,7 @@ function Install-OrUpdatePlayerAdmin {
 function Start-PlayerAdmin {
  $installedPath=[string]$script:InstallerConfig.PlayerAdminPath
  $path=Join-Path $script:AppPath 'Tools\RathenaPlayerAdmin'
- $startPath=Join-Path $path 'Start.cmd'
+ $startPath=Join-Path $path 'Start.ps1'
  $sourceSettings=Join-Path $path 'local-settings.json'
  $installedSettings=Join-Path $installedPath 'local-settings.json'
  if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '安裝器內建的玩家管理後台不完整，請重新下載安裝器專案。'}
@@ -52,7 +52,10 @@ function Start-PlayerAdmin {
  } elseif(-not(Test-Path -LiteralPath $sourceSettings -PathType Leaf)){
   Write-PlayerAdminSettings -Path $sourceSettings
  }
- Start-Process -FilePath $startPath -WorkingDirectory $path
+ # Invoke the exact bundled script, rather than a .cmd launcher that could
+ # resolve to an older installed copy on a user's PATH or open console.
+ $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$startPath+'"'
+ Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WorkingDirectory $path
  $script:MenuNotice='玩家管理後台已從 Tools\RathenaPlayerAdmin 啟動；準備完成後會開啟 http://127.0.0.1:5080。'
  Write-Host ('[OK] 已開啟：{0}' -f $startPath) -ForegroundColor Green
  Write-Host ('[i] 使用路徑：{0}' -f $path) -ForegroundColor Cyan
