@@ -47,15 +47,25 @@ function Start-PlayerAdmin {
  $startPath=Join-Path $path 'Start.ps1'
  $sourceSettings=Join-Path $path 'local-settings.json'
  $installedSettings=Join-Path $installedPath 'local-settings.json'
+ $installedDotNet=Join-Path $installedPath '.dotnet\dotnet.exe'
  if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '安裝器內建的玩家管理後台不完整，請重新下載安裝器專案。'}
  if(Test-Path -LiteralPath $installedSettings -PathType Leaf){
   Copy-Item -LiteralPath $installedSettings -Destination $sourceSettings -Force
  } elseif(-not(Test-Path -LiteralPath $sourceSettings -PathType Leaf)){
   Write-PlayerAdminSettings -Path $sourceSettings
  }
- # Invoke the exact bundled script, rather than a .cmd launcher that could
- # resolve to an older installed copy on a user's PATH or open console.
- $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$startPath+'"'
+ # J always opens the bundled source. Its private .NET runtime is kept in the
+ # installed Player Admin folder, so pass that runtime to the child process.
+ # This prevents J from downloading anything or closing immediately when the
+ # system-wide .NET SDK is not installed.
+ if(Test-Path -LiteralPath $installedDotNet -PathType Leaf){
+  $dotNetRoot=Split-Path -Parent $installedDotNet
+  $escapedRoot=$dotNetRoot.Replace("'","''")
+  $escapedStart=$startPath.Replace("'","''")
+  $arguments='-NoProfile -ExecutionPolicy Bypass -Command "& { $env:DOTNET_ROOT = '''+$escapedRoot+''' ; $env:PATH = '''+$escapedRoot+';'' + $env:PATH ; & '''+$escapedStart+''' }"'
+ } else {
+  $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$startPath+'"'
+ }
  Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WorkingDirectory $path
  $script:MenuNotice='玩家管理後台已從 Tools\RathenaPlayerAdmin 啟動；準備完成後會開啟 http://127.0.0.1:5080。'
  Write-Host ('[OK] 已開啟：{0}' -f $startPath) -ForegroundColor Green
