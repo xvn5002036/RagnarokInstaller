@@ -29,7 +29,7 @@ function Show-MainMenu {
  Write-Host '[7] 建立 / 匯入資料庫';Write-Host '    建立遊戲資料庫並匯入核心需要的 SQL；已有資料時可選擇保留。' -ForegroundColor DarkGray
  Write-Host '[8] 初始化 rAthena 設定';Write-Host '    寫入資料庫連線、伺服器通訊帳密與 PACKETVER 等必要設定。' -ForegroundColor DarkGray;Write-Host ''
  Write-Host '【玩家管理後台】' -ForegroundColor Yellow
- Write-Host '[I] 安裝 / 更新玩家管理後台';Write-Host '    獨立安裝 RathenaPlayerAdmin；所需 .NET 8 SDK 請由 [1] 管理。' -ForegroundColor DarkGray
+ Write-Host '[I] 安裝 / 更新玩家管理後台';Write-Host '    套用本安裝器內建的 RathenaPlayerAdmin 最新版；所需 .NET 8 SDK 請由 [1] 管理。' -ForegroundColor DarkGray
  Write-Host '[J] 啟動玩家管理後台';Write-Host '    開啟本機玩家資料管理介面，可查詢與維護帳號、角色及物品資料。' -ForegroundColor DarkGray;Write-Host ''
  Write-Host '【工具】' -ForegroundColor Yellow
  Write-Host '[9] 顯示系統資訊';Write-Host '    查看目前核心、安裝路徑、資料庫、Python 與伺服器執行檔狀態。' -ForegroundColor DarkGray
