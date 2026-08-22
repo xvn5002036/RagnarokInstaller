@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([switch]$SetupOnly)
+
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
@@ -56,8 +59,11 @@ if (-not (Test-DotNet8Sdk) -and (Test-Path -LiteralPath $localDotNetExe)) {
 }
 
 if (-not (Test-DotNet8Sdk)) {
+    if (-not $SetupOnly) {
+        throw '找不到 .NET 8 SDK。請回到 Ragnarok 安裝管理中心，先按 [I] 安裝／更新玩家管理後台（或按 [1] 安裝系統 .NET 8 SDK），再按 [J] 啟動。'
+    }
     Write-Host ''
-    Write-Host '.NET 8 SDK was not found. Downloading a private copy...' -ForegroundColor Yellow
+    Write-Host '.NET 8 SDK was not found. Downloading a private copy for Player Admin...' -ForegroundColor Yellow
     Write-Host 'This does not require administrator permission.'
 
     New-Item -ItemType Directory -Force -Path $localDotNet | Out-Null
@@ -80,6 +86,11 @@ if (-not (Test-DotNet8Sdk)) {
 
 if (-not (Test-DotNet8Sdk)) {
     throw '.NET 8 SDK is still unavailable after installation.'
+}
+
+if ($SetupOnly) {
+    Write-Host '[OK] Player Admin 執行環境已準備完成。' -ForegroundColor Green
+    exit 0
 }
 
 $configPath = Join-Path $PSScriptRoot 'local-settings.json'

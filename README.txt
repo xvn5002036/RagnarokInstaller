@@ -33,13 +33,14 @@
 [E] 更新 NPC 腳本中文化
 [F] 套用中文化
 [G] 一鍵初始化（不自動啟動）
-[I] 安裝 / 更新 RathenaPlayerAdmin 玩家管理後台（套用安裝器內建最新版）
-[J] 啟動 RathenaPlayerAdmin 玩家管理後台
+[I] 安裝 / 更新 RathenaPlayerAdmin 玩家管理後台（套用內建最新版並準備 .NET 環境）
+[J] 啟動 RathenaPlayerAdmin 玩家管理後台（只啟動，不下載）
 [0] 離開
 
 玩家管理後台
 - 後台原始碼收錄於 Tools\RathenaPlayerAdmin；按 [I] 會更新至 C:\Server\RathenaPlayerAdmin，不會覆蓋 rAthena 或 PandasWS 核心。
 - 更新安裝器後再按 [I]，即可套用內建的最新版；所需 Microsoft .NET 8 SDK 統一由選項 [1] 管理。
+- 選項 [I] 也會在需要時下載 Player Admin 專用的 .NET 8 環境；選項 [J] 只會啟動，不會下載任何檔案。
 - 第一次安裝會沿用本安裝器的 MariaDB 主機、連接埠、資料庫與伺服器帳密。
 - 後續更新會保留 C:\Server\RathenaPlayerAdmin\local-settings.json，不會用遠端設定覆蓋本機資料庫設定。
 - 選項 [J] 會執行獨立專案內的 Start.cmd；準備完成後開啟 http://127.0.0.1:5080。
