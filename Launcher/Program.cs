@@ -100,7 +100,9 @@ namespace RagnarokInstallerLauncher
                 ? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)
                 : desktopOverride;
             string archive = Path.Combine(Path.GetTempPath(), "RagnarokInstaller-" + Guid.NewGuid().ToString("N") + ".zip");
+            string settingsBackup = Path.Combine(Path.GetTempPath(), "RagnarokInstaller-settings-" + Guid.NewGuid().ToString("N") + ".json");
             string installFolder = Path.Combine(desktop, "RagnarokInstaller-main");
+            string settingsPath = Path.Combine(installFolder, "Config", "installer.json");
 
             try
             {
@@ -109,11 +111,21 @@ namespace RagnarokInstallerLauncher
                 DownloadArchive(DownloadUrl, archive);
 
                 worker.ReportProgress(82, "正在準備桌面上的安裝資料夾…");
+                // The launcher replaces the downloaded source folder on every start. Preserve
+                // the user's selected core and database settings before that replacement.
+                if (File.Exists(settingsPath))
+                    File.Copy(settingsPath, settingsBackup, true);
                 if (Directory.Exists(installFolder))
                     Directory.Delete(installFolder, true);
 
                 worker.ReportProgress(88, "正在解壓縮最新版…");
                 ZipFile.ExtractToDirectory(archive, desktop);
+
+                if (File.Exists(settingsBackup))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(settingsPath));
+                    File.Copy(settingsBackup, settingsPath, true);
+                }
 
                 string startFile = Path.Combine(installFolder, "Start.cmd");
                 if (!File.Exists(startFile))
@@ -132,6 +144,8 @@ namespace RagnarokInstallerLauncher
             finally
             {
                 try { if (File.Exists(archive)) File.Delete(archive); }
+                catch { }
+                try { if (File.Exists(settingsBackup)) File.Delete(settingsBackup); }
                 catch { }
             }
         }
