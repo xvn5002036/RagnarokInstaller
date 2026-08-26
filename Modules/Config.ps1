@@ -20,11 +20,14 @@ function Get-InstallerConfig {
  catch { $b='{0}.broken-{1}' -f $script:ConfigFile,(Get-Date -Format yyyyMMdd-HHmmss); Copy-Item $script:ConfigFile $b -Force; $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
 }
 function Select-Emulator {
- Write-Host ''; Write-Host '[1] rAthena'; Write-Host '    使用 rAthena 官方核心與其 GitHub 原始碼。' -ForegroundColor DarkGray
- Write-Host '[2] PandasWS'; Write-Host '    使用 PandasWS 核心與其 GitHub 原始碼。' -ForegroundColor DarkGray
+ Write-Host ''; Write-Host '[1] rAthena'; Write-Host ('    切換後會在 {0} 工作。' -f $script:InstallerConfig.RAthenaPath) -ForegroundColor DarkGray
+ Write-Host '[2] PandasWS'; Write-Host ('    切換後會在 {0} 工作。' -f $script:InstallerConfig.PandasWSPath) -ForegroundColor DarkGray
  $c=Read-Host ('選擇核心（目前 {0}）' -f $script:InstallerConfig.Emulator)
- if($c -eq '1'){$script:InstallerConfig.Emulator='rAthena'} elseif($c -eq '2'){$script:InstallerConfig.Emulator='PandasWS'}
+ if($c -eq '1'){$script:InstallerConfig.Emulator='rAthena'} elseif($c -eq '2'){$script:InstallerConfig.Emulator='PandasWS'} else {Write-Host '[-] 未切換核心。' -ForegroundColor DarkYellow;return}
  Save-InstallerConfig $script:InstallerConfig
+ $core=Get-CoreInfo
+ $script:MenuNotice=('目前核心已切換為 {0}，工作路徑：{1}' -f $core.Name,$core.Path)
+ Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green
 }
 function Get-CoreInfo {
  if($script:InstallerConfig.Emulator -eq 'PandasWS'){return [pscustomobject]@{Name='PandasWS';Path=$script:InstallerConfig.PandasWSPath;Repo=$script:InstallerConfig.Repositories.PandasWS}}
