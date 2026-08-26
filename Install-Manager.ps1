@@ -3,7 +3,7 @@
 Set-StrictMode -Version 2.0;$ErrorActionPreference='Stop'
 $script:AppPath=Split-Path -Parent $MyInvocation.MyCommand.Path;$script:ConfigPath=Join-Path $script:AppPath 'Config';$script:LogsPath=Join-Path $script:AppPath 'Logs';$script:ConfigFile=Join-Path $script:ConfigPath 'installer.json';$script:MenuNotice='';$script:ShowSystemDetails=$false
 foreach($m in @('Logger.ps1','Common.ps1','UI.ps1','Config.ps1','Environment.ps1','Git.ps1','Database.ps1','ConfigEditor.ps1','Compiler.ps1','Localization.ps1','PlayerAdmin.ps1','Service.ps1')){. (Join-Path (Join-Path $script:AppPath 'Modules') $m)}
-try{Assert-Administrator;$script:InstallerConfig=Get-InstallerConfig;Initialize-ApplicationDirectories;Write-Log 'Ragnarok 安裝管理中心已啟動。'}catch{Write-Host ('[X] 初始化失敗：{0}' -f $_.Exception.Message) -ForegroundColor Red;exit 1}
+try{Assert-Administrator;$script:InstallerConfig=Get-InstallerConfig;Initialize-ApplicationDirectories;Initialize-FirstRunCoreSelection;Write-Log 'Ragnarok 安裝管理中心已啟動。'}catch{Write-Host ('[X] 初始化失敗：{0}' -f $_.Exception.Message) -ForegroundColor Red;exit 1}
 function Show-MainMenu {
  Clear-Host;$core=Get-CoreInfo
  Write-Host '========================================================' -ForegroundColor Cyan

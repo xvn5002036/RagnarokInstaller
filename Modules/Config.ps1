@@ -1,33 +1,56 @@
 ﻿Set-StrictMode -Version 2.0
 function New-DefaultInstallerConfig {
  [pscustomobject]@{
-  SchemaVersion=3; Emulator='rAthena'; RootPath='C:\Server'; RAthenaPath='C:\Server\rAthena'; PandasWSPath='C:\Server\PandasWS'; ClientPatchPath='C:\Server\WARP0716'; ROenglishREPath='C:\Server\ROenglishRE'; NpcBig5Path='C:\Server\rathena-npc-big5'; PlayerAdminPath='C:\Server\RathenaPlayerAdmin'; PacketVersion=20260107
+  SchemaVersion=4; Emulator='rAthena'; CoreSelectionCompleted=$false; RootPath='C:\Server'; RAthenaPath='C:\Server\rAthena'; PandasWSPath='C:\Server\PandasWS'; ClientPatchPath='C:\Server\WARP0716'; ROenglishREPath='C:\Server\ROenglishRE'; NpcBig5Path='C:\Server\rathena-npc-big5'; PlayerAdminPath='C:\Server\RathenaPlayerAdmin'; PacketVersion=20260107
   Repositories=[pscustomobject]@{RAthena=[pscustomobject]@{Url='https://github.com/rathena/rathena.git';Branch='master'};PandasWS=[pscustomobject]@{Url='https://github.com/PandasWS/Pandas.git';Branch='master'};ClientPatch=[pscustomobject]@{Url='https://github.com/CrazyBebop/WARP0716.git';Branch='main'};ROenglishRE=[pscustomobject]@{Url='https://github.com/llchrisll/ROenglishRE.git';Branch='master'};NpcBig5=[pscustomobject]@{Url='https://github.com/xvn5002036/rathena-npc-big5.git';Branch='main'};PlayerAdmin=[pscustomobject]@{Url='https://github.com/xvn5002036/RathenaPlayerAdmin.git';Branch='main'}}
   Database=[pscustomobject]@{Engine='MariaDB';HostName='127.0.0.1';Port=3306;MainDatabase='rathenadb';LogDatabase='rathenalog';WebDatabase='rathenadb';UserName='root';Password='';ServerUserName='rathenadbusr';ServerPassword='froggopass';CharacterSet='utf8mb4';Collation='utf8mb4_unicode_520_ci'}
  }
 }
 function Save-InstallerConfig { param($Config); if(-not(Test-Path $script:ConfigPath)){New-Item -ItemType Directory -Path $script:ConfigPath -Force|Out-Null}; [IO.File]::WriteAllText($script:ConfigFile,($Config|ConvertTo-Json -Depth 10),(New-Object Text.UTF8Encoding($true))); Write-Log ('設定已儲存：{0}' -f $script:ConfigFile) }
 function Get-InstallerConfig {
- if(-not(Test-Path $script:ConfigFile)){ $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
+ if(-not(Test-Path $script:ConfigFile)){ return (New-DefaultInstallerConfig) }
  try {
   $s=[IO.File]::ReadAllText($script:ConfigFile,[Text.Encoding]::UTF8);if([string]::IsNullOrWhiteSpace($s)){throw '設定檔為空白'}
   $c=$s|ConvertFrom-Json;$defaults=New-DefaultInstallerConfig
   if(-not($c.PSObject.Properties.Name -contains 'PlayerAdminPath')){$c|Add-Member -NotePropertyName PlayerAdminPath -NotePropertyValue $defaults.PlayerAdminPath}
   if(-not($c.Repositories.PSObject.Properties.Name -contains 'PlayerAdmin')){$c.Repositories|Add-Member -NotePropertyName PlayerAdmin -NotePropertyValue $defaults.Repositories.PlayerAdmin}
-  if([int]$c.SchemaVersion -lt 3){$c.SchemaVersion=3;Save-InstallerConfig $c}
+  if(-not($c.PSObject.Properties.Name -contains 'CoreSelectionCompleted')){$c|Add-Member -NotePropertyName CoreSelectionCompleted -NotePropertyValue $false}
+  if([int]$c.SchemaVersion -lt 4){$c.SchemaVersion=4}
   return $c
  }
- catch { $b='{0}.broken-{1}' -f $script:ConfigFile,(Get-Date -Format yyyyMMdd-HHmmss); Copy-Item $script:ConfigFile $b -Force; $d=New-DefaultInstallerConfig; Save-InstallerConfig $d; return $d }
+ catch { $b='{0}.broken-{1}' -f $script:ConfigFile,(Get-Date -Format yyyyMMdd-HHmmss); Copy-Item $script:ConfigFile $b -Force; return (New-DefaultInstallerConfig) }
+}
+function Complete-CoreSelection {
+ param([ValidateSet('rAthena','PandasWS')][string]$Emulator)
+ $script:InstallerConfig.Emulator=$Emulator
+ $script:InstallerConfig.CoreSelectionCompleted=$true
+ Save-InstallerConfig $script:InstallerConfig
+ $core=Get-CoreInfo
+ $script:MenuNotice=('目前核心已設定為 {0}，工作路徑：{1}' -f $core.Name,$core.Path)
+ Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green
+}
+function Initialize-FirstRunCoreSelection {
+ if($script:InstallerConfig.CoreSelectionCompleted -eq $true){return}
+ Write-Host ''
+ Write-Host '========================================================' -ForegroundColor Cyan
+ Write-Host '首次使用：請選擇要安裝與管理的伺服器核心' -ForegroundColor Cyan
+ Write-Host '[1] rAthena' -ForegroundColor White
+ Write-Host ('    工作路徑：{0}' -f $script:InstallerConfig.RAthenaPath) -ForegroundColor DarkGray
+ Write-Host '[2] PandasWS' -ForegroundColor White
+ Write-Host ('    工作路徑：{0}' -f $script:InstallerConfig.PandasWSPath) -ForegroundColor DarkGray
+ Write-Host '選擇會儲存為預設核心；往後重開不會再詢問，只有按 [S] 才能切換。' -ForegroundColor Yellow
+ while($true){
+  $choice=(Read-Host '請輸入 1 或 2').Trim()
+  if($choice -eq '1'){Complete-CoreSelection 'rAthena';return}
+  if($choice -eq '2'){Complete-CoreSelection 'PandasWS';return}
+  Write-Host '[X] 請輸入 1（rAthena）或 2（PandasWS）。' -ForegroundColor Red
+ }
 }
 function Select-Emulator {
  Write-Host ''; Write-Host '[1] rAthena'; Write-Host ('    切換後會在 {0} 工作。' -f $script:InstallerConfig.RAthenaPath) -ForegroundColor DarkGray
  Write-Host '[2] PandasWS'; Write-Host ('    切換後會在 {0} 工作。' -f $script:InstallerConfig.PandasWSPath) -ForegroundColor DarkGray
  $c=Read-Host ('選擇核心（目前 {0}）' -f $script:InstallerConfig.Emulator)
- if($c -eq '1'){$script:InstallerConfig.Emulator='rAthena'} elseif($c -eq '2'){$script:InstallerConfig.Emulator='PandasWS'} else {Write-Host '[-] 未切換核心。' -ForegroundColor DarkYellow;return}
- Save-InstallerConfig $script:InstallerConfig
- $core=Get-CoreInfo
- $script:MenuNotice=('目前核心已切換為 {0}，工作路徑：{1}' -f $core.Name,$core.Path)
- Write-Host ('[OK] {0}' -f $script:MenuNotice) -ForegroundColor Green
+ if($c -eq '1'){Complete-CoreSelection 'rAthena'} elseif($c -eq '2'){Complete-CoreSelection 'PandasWS'} else {Write-Host '[-] 未切換核心。' -ForegroundColor DarkYellow;return}
 }
 function Get-CoreInfo {
  if($script:InstallerConfig.Emulator -eq 'PandasWS'){return [pscustomobject]@{Name='PandasWS';Path=$script:InstallerConfig.PandasWSPath;Repo=$script:InstallerConfig.Repositories.PandasWS}}
