@@ -169,5 +169,14 @@ function Invoke-VisualStudioBuild {
  Write-Host ('[OK] {0} Visual Studio {1} 完成，核心位置：{2}' -f $core.Name,$Target,$core.Path) -ForegroundColor Green
 }
 
-function Build-RagnarokServer {Invoke-VisualStudioBuild -Target Build}
-function Clear-RagnarokBuild {Invoke-VisualStudioBuild -Target Clean}
+function Build-RagnarokServer {
+ Write-Host '[i] 正在進行快速增量編譯：MSBuild 會自動重新編譯所有已修改及受影響的檔案。' -ForegroundColor Cyan
+ Write-Host '[i] 一般修改程式後請直接按 [4]；不必先按 [5]，產出的伺服器執行檔結果相同。' -ForegroundColor Cyan
+ Invoke-VisualStudioBuild -Target Build
+}
+function Clear-RagnarokBuild {
+ Write-Host '[!] 此操作會移除編譯快取，下一次 [4] 將進行接近首次的完整編譯。' -ForegroundColor Yellow
+ $confirmation=Read-Host '僅在核心更新、編譯異常或確定需要完整重建時使用；輸入 CLEAN 確認'
+ if($confirmation -ne 'CLEAN'){Write-Host '[-] 已取消清除，保留快速增量編譯快取。' -ForegroundColor DarkYellow;return}
+ Invoke-VisualStudioBuild -Target Clean
+}

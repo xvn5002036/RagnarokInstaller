@@ -19,7 +19,7 @@
 [2] 安裝 / 更新 MariaDB
 [3] 更新 rAthena / PandasWS
 [4] 編譯目前核心
-[5] 清除目前核心的編譯結果（需要重新編譯時再執行 [4]）
+[5] 清除目前核心的編譯快取（通常不需要；下一次 [4] 會接近首次完整編譯的時間）
 [6] 更新 WARP
 [7] 建立 / 匯入資料庫
 [8] 初始化 rAthena 設定
@@ -58,7 +58,7 @@
 編譯方式
 - 使用 rAthena 官方 rAthena.sln。
 - Visual Studio 2022 MSBuild，Release | x64。
-- 選項 [4] 執行 Build；選項 [5] 只執行 Clean，不使用自訂 build 資料夾。
+- 選項 [4] 執行增量 Build：程式修改後直接使用，MSBuild 只會重新編譯已變更和相依檔案，產出與完整編譯相同。選項 [5] 只執行 Clean，僅在核心更新、編譯異常或需要完整重建時使用。
 - login-server.exe、char-server.exe、map-server.exe、web-server.exe 位於 C:\Server\rAthena。
 - 編譯畫面會持續顯示 MSBuild PID、耗時及編譯／連結狀態。
 
