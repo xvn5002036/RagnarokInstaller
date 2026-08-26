@@ -118,6 +118,8 @@ if (-not (Test-Path -LiteralPath $configPath)) {
         Database = $database
         User     = $user
         Password = $password
+        CorePath = 'C:\Server\rAthena'
+        CoreName = 'rAthena'
         Url      = 'http://127.0.0.1:5080'
     }
     $config | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding UTF8
@@ -126,9 +128,12 @@ if (-not (Test-Path -LiteralPath $configPath)) {
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $env:ConnectionStrings__Rathena = "Server=$($config.Server);Port=$($config.Port);Database=$($config.Database);User ID=$($config.User);Password=$($config.Password);Allow User Variables=true;"
+if ($config.PSObject.Properties.Name -contains 'CorePath' -and -not [string]::IsNullOrWhiteSpace($config.CorePath)) {
+    $env:Rathena__CorePath = [string]$config.CorePath
+}
 
 Write-Host ''
-Write-Host 'Starting rAthena Player Admin...' -ForegroundColor Green
+Write-Host ("Starting {0} Player Admin..." -f $(if ($config.PSObject.Properties.Name -contains 'CoreName') { $config.CoreName } else { 'rAthena' })) -ForegroundColor Green
 Write-Host "Address: $($config.Url)"
 Write-Host 'Keep this window open while using the application.'
 

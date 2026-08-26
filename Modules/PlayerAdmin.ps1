@@ -3,12 +3,15 @@
 function Write-PlayerAdminSettings {
  param([Parameter(Mandatory=$true)][string]$Path)
  $database=$script:InstallerConfig.Database
+ $core=Get-CoreInfo
  $settings=[ordered]@{
   Server=[string]$database.HostName
   Port=[string]$database.Port
   Database=[string]$database.MainDatabase
   User=[string]$database.ServerUserName
   Password=[string]$database.ServerPassword
+  CorePath=[string]$core.Path
+  CoreName=[string]$core.Name
   Url='http://127.0.0.1:5080'
  }
  [IO.File]::WriteAllText($Path,($settings|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
@@ -19,19 +22,14 @@ function Install-OrUpdatePlayerAdmin {
  $path=[string]$script:InstallerConfig.PlayerAdminPath
  $sourcePath=Join-Path $script:AppPath 'Tools\RathenaPlayerAdmin'
  $settingsPath=Join-Path $path 'local-settings.json'
- $savedSettings=$null
- if(Test-Path -LiteralPath $settingsPath -PathType Leaf){
-  $savedSettings=[IO.File]::ReadAllText($settingsPath,[Text.Encoding]::UTF8)
- }
-
  if(-not(Test-Path -LiteralPath (Join-Path $sourcePath 'RathenaPlayerAdmin.csproj') -PathType Leaf)){
   throw ('安裝器內建的 RathenaPlayerAdmin 原始碼不完整：{0}' -f $sourcePath)
  }
  Write-Host '[..] 正在從安裝器內建版本更新玩家管理後台...' -ForegroundColor Cyan
  Copy-DirectoryContent -Source $sourcePath -Destination $path -Exclude @('.git','bin','obj','artifacts','.dotnet','local-settings.json')
- if($null -ne $savedSettings){
-  [IO.File]::WriteAllText($settingsPath,$savedSettings,(New-Object Text.UTF8Encoding($false)))
- } else {Write-PlayerAdminSettings -Path $settingsPath}
+ # Always refresh this file from the installation manager. This keeps Player
+ # Admin connected to the currently selected rAthena or PandasWS core.
+ Write-PlayerAdminSettings -Path $settingsPath
  if(-not(Test-Path -LiteralPath (Join-Path $sourcePath 'Start.ps1') -PathType Leaf)){throw ('玩家管理後台缺少環境準備檔：{0}' -f (Join-Path $sourcePath 'Start.ps1'))}
  Write-Host '[..] 正在確認玩家管理後台的 .NET 8 執行環境...' -ForegroundColor Cyan
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $sourcePath 'Start.ps1') -SetupOnly
@@ -48,11 +46,9 @@ function Start-PlayerAdmin {
  $installedSettings=Join-Path $installedPath 'local-settings.json'
  $installedDotNet=Join-Path $installedPath '.dotnet\dotnet.exe'
  if(-not(Test-Path -LiteralPath $startPath -PathType Leaf)){throw '安裝器內建的玩家管理後台不完整，請重新下載安裝器專案。'}
- if(Test-Path -LiteralPath $installedSettings -PathType Leaf){
-  Copy-Item -LiteralPath $installedSettings -Destination $sourceSettings -Force
- } elseif(-not(Test-Path -LiteralPath $sourceSettings -PathType Leaf)){
-  Write-PlayerAdminSettings -Path $sourceSettings
- }
+ # J uses Tools\RathenaPlayerAdmin, so write current core settings here every
+ # time instead of reusing settings from a previously selected core.
+ Write-PlayerAdminSettings -Path $sourceSettings
  # J always opens the bundled source. Its private .NET runtime is kept in the
  # installed Player Admin folder, so pass that runtime to the child process.
  # This prevents J from downloading anything or closing immediately when the
