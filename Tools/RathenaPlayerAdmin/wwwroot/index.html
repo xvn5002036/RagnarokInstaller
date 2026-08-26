@@ -21,7 +21,7 @@
     .brand { display: flex; align-items: center; gap: 12px }
     .brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: white; font-weight: 800; background: linear-gradient(145deg,#75b4ff,#5b5ee8); box-shadow: 0 8px 24px #4b83eb66 }
     .brand h1 { font-size: 18px; margin: 0 }.brand p { color: var(--muted); font-size: 12px; margin: 3px 0 0 }
-    .server-pill { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font-size: 12px }
+    .header-actions { display: flex; align-items: center; gap: 9px }.server-pill { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font-size: 12px }.build-guide-button { padding: 8px 12px; font-size: 12px }
     .server-pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green) }
     main { width: min(1480px, calc(100% - 32px)); margin: 24px auto 60px }
     .panel { background: linear-gradient(145deg,#151e32,#10182a); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow) }
@@ -61,13 +61,14 @@
     dialog { width: min(920px,calc(100% - 24px)); max-height: 90vh; overflow: auto; color: var(--text); background: #121a2d; border: 1px solid var(--line); border-radius: 18px; padding: 0; box-shadow: var(--shadow) } dialog::backdrop { background: #030712bb; backdrop-filter: blur(5px) }.dialog-head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #172238; border-bottom: 1px solid var(--line) }.dialog-head h3 { margin: 0; font-size: 16px }.dialog-body { padding: 20px }.close { border: 0; color: var(--muted); background: transparent; font-size: 22px }.danger-zone { margin-top: 26px; padding: 16px; border: 1px solid #a83d5266; background: #5c1e2a35; border-radius: 12px }.danger-zone h3 { color: var(--red); margin: 0 0 7px; font-size: 14px }
     .toast { position: fixed; right: 20px; bottom: 20px; z-index: 30; max-width: 360px; padding: 12px 15px; border-radius: 11px; background: #17243b; border: 1px solid var(--line); box-shadow: var(--shadow); transform: translateY(90px); opacity: 0; transition: .25s }.toast.show { transform: none; opacity: 1 }.toast.bad { border-color: #a83d52; color: #ffd5db }
     @media(max-width:900px){.layout{grid-template-columns:1fr}.list-panel{position:static}.character-list{max-height:360px}.form-grid{grid-template-columns:repeat(2,1fr)}.job-picker{grid-template-columns:1fr}}
-    @media(max-width:560px){main{width:min(100% - 18px,1480px);margin-top:10px}.app-header{padding:12px}.server-pill{display:none}.search-panel{flex-direction:column}.search-panel .btn{width:100%}.form-grid{grid-template-columns:1fr}.hero{align-items:flex-start}.zeny{display:none}.content{padding:14px}.toolbar{flex-wrap:wrap}.toolbar input{width:100%}}
+    .build-guide { display: grid; gap: 12px }.build-guide section { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #0b122277 }.build-guide h4 { margin: 0 0 7px; color: var(--primary) }.build-guide p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7 }.build-guide .important { color: #ffd5a1; border-color: #b4783577; background: #6f481f35 }
+    @media(max-width:560px){main{width:min(100% - 18px,1480px);margin-top:10px}.app-header{padding:12px}.server-pill{display:none}.build-guide-button{padding:8px}.search-panel{flex-direction:column}.search-panel .btn{width:100%}.form-grid{grid-template-columns:1fr}.hero{align-items:flex-start}.zeny{display:none}.content{padding:14px}.toolbar{flex-wrap:wrap}.toolbar input{width:100%}}
   </style>
 </head>
 <body>
   <header class="app-header">
     <div class="brand"><div class="brand-mark">RA</div><div><h1>rAthena 玩家資料管理</h1><p>角色、物品與伺服器管理中心</p></div></div>
-    <div class="server-pill"><i></i>管理工具已啟動</div>
+    <div class="header-actions"><button class="btn secondary build-guide-button" onclick="document.getElementById('buildGuideDialog').showModal()">編譯說明</button><div class="server-pill"><i></i>管理工具已啟動</div></div>
   </header>
   <main>
     <section class="panel search-panel">
@@ -105,6 +106,7 @@
   </main>
   <dialog id="itemDialog"><div class="dialog-head"><h3 id="itemDialogTitle">編輯物品</h3><button class="close" onclick="closeDialog('itemDialog')">×</button></div><div class="dialog-body"><div id="itemForm"></div><div class="actions"><span id="itemMessage" class="message"></span><button class="btn" onclick="saveItem()">儲存物品</button></div></div></dialog>
   <dialog id="commandDialog"><div class="dialog-head"><h3 id="commandName">執行 GM 指令</h3><button class="close" onclick="closeDialog('commandDialog')">×</button></div><div class="dialog-body"><p id="commandDescription" class="muted"></p><div id="commandDanger" class="online-warning" hidden>此指令可能造成大量或不可逆的變更，執行前請再次確認。</div><div class="field" style="margin-top:16px"><label>指令參數</label><input id="commandArgs" autocomplete="off"><small id="commandUsage"></small></div><div class="actions"><span id="commandMessage" class="message"></span><button class="btn" onclick="sendAtCommand()">送出指令</button></div></div></dialog>
+  <dialog id="buildGuideDialog"><div class="dialog-head"><h3>伺服器編譯說明</h3><button class="close" onclick="closeDialog('buildGuideDialog')">×</button></div><div class="dialog-body build-guide"><section><h4>第一次編譯</h4><p>在 Ragnarok 安裝管理中心按 <b>[4] 快速增量編譯目前核心</b>。第一次沒有編譯快取，所以耗時較久，這是正常的。</p></section><section><h4>修改程式後</h4><p>修改完成後直接再按 <b>[4]</b>。系統會自動偵測改過的程式與相依檔案，只重新編譯需要更新的部分；最終伺服器執行檔與完整重新編譯的結果相同。</p></section><section class="important"><h4>通常不要按 [5]</h4><p><b>[5] 清除編譯快取</b> 會刪除中間檔，使下一次 [4] 接近首次完整編譯的時間。僅在更新整個核心、編譯異常，或確定需要完整重建時才使用。使用後輸入 <b>CLEAN</b> 確認，再按 [4]。</p></section></div></dialog>
   <div id="toast" class="toast"></div>
   <script>
     let current=null,currentContainer='',editingItem=null,commandCatalog=[],selectedCommand=null,itemCache=[],jobCatalog=[],selectedJob=null,characterRows=[],mapCatalog=[];
