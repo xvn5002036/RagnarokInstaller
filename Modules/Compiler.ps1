@@ -174,9 +174,39 @@ function Build-RagnarokServer {
  Write-Host '[i] 一般修改程式後請直接按 [4]；不必先按 [5]，產出的伺服器執行檔結果相同。' -ForegroundColor Cyan
  Invoke-VisualStudioBuild -Target Build
 }
+function Remove-RagnarokBuildArtifacts {
+ param([Parameter(Mandatory=$true)][string]$CorePath)
+ $resolvedCore=[IO.Path]::GetFullPath($CorePath).TrimEnd('\')
+ if(-not(Test-Path -LiteralPath $resolvedCore -PathType Container)){throw ('核心目錄不存在：{0}' -f $resolvedCore)}
+ # 不可在伺服器使用檔案時清除，避免留下半套執行檔。
+ $running=@(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue)
+ if($running.Count){throw '伺服器仍在執行中。請先按 [H] 停止伺服器，再執行 [5]。'}
+
+ $removed=0
+ # rAthena / PandasWS 會將這些編譯輸出放在核心根目錄；不包含 pcre8.dll、libmysql.dll
+ # 等下載原始碼本身提供的必要執行期 DLL。
+ $artifactExtensions=@('.exe','.pdb','.ilk','.lib','.exp')
+ foreach($file in @(Get-ChildItem -LiteralPath $resolvedCore -File -Force | Where-Object {$artifactExtensions -contains $_.Extension.ToLowerInvariant()})){
+  Remove-Item -LiteralPath $file.FullName -Force
+  $removed++
+ }
+ # Visual Studio 的中間檔在每個專案的 .vs\build 內；僅刪除此明確的編譯快取目錄，
+ # 不碰 .vs 其他使用者設定，也不碰任何原始碼目錄。
+ $buildDirectories=@(Get-ChildItem -LiteralPath $resolvedCore -Directory -Recurse -Force | Where-Object {
+  $_.Name -eq 'build' -and $_.Parent.Name -eq '.vs' -and $_.FullName.StartsWith($resolvedCore+'\',[StringComparison]::OrdinalIgnoreCase)
+ })
+ foreach($directory in $buildDirectories){
+  Remove-Item -LiteralPath $directory.FullName -Recurse -Force
+  $removed++
+ }
+ Write-Host ('[OK] 已移除 {0} 個編譯產物／快取目錄；核心已回到未編譯狀態。' -f $removed) -ForegroundColor Green
+}
 function Clear-RagnarokBuild {
- Write-Host '[!] 此操作會移除編譯快取，下一次 [4] 將進行接近首次的完整編譯。' -ForegroundColor Yellow
- $confirmation=Read-Host '僅在核心更新、編譯異常或確定需要完整重建時使用；輸入 CLEAN 確認'
+ $core=Get-CoreInfo
+ Write-Host '[!] 此操作會將目前核心還原成「未編譯」狀態，下一次 [4] 將進行完整編譯。' -ForegroundColor Yellow
+ Write-Host '[i] 會清除伺服器 EXE、PDB、LIB、EXP 與 .vs\build 中間檔；不會刪除原始碼、設定或資料庫。' -ForegroundColor Cyan
+ $confirmation=Read-Host ('確定清除 {0} 的所有編譯產物？輸入 CLEAN 確認' -f $core.Name)
  if($confirmation -ne 'CLEAN'){Write-Host '[-] 已取消清除，保留快速增量編譯快取。' -ForegroundColor DarkYellow;return}
  Invoke-VisualStudioBuild -Target Clean
+ Remove-RagnarokBuildArtifacts -CorePath $core.Path
 }

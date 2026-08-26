@@ -20,7 +20,7 @@ function Show-MainMenu {
  Write-Host '[S] 切換目前核心';Write-Host '    只切換 rAthena／PandasWS 的工作路徑，不下載或更新檔案。' -ForegroundColor DarkGray
  Write-Host '[3] 更新 rAthena / PandasWS';Write-Host '    選擇核心，並從 GitHub 下載或更新它的原始碼。' -ForegroundColor DarkGray
  Write-Host '[4] 快速增量編譯目前核心';Write-Host '    改完程式後直接使用；只編譯已變更與相依檔案，結果和完整編譯相同，速度最快。' -ForegroundColor DarkGray
- Write-Host '[5] 清除目前核心的編譯快取（通常不需要）';Write-Host '    會刪除中間檔，下一次 [4] 會像第一次一樣久。僅在更新核心、編譯異常或需要完整重建時使用。' -ForegroundColor DarkYellow;Write-Host ''
+ Write-Host '[5] 還原目前核心為未編譯狀態（通常不需要）';Write-Host '    清除伺服器 EXE 與所有編譯快取；下一次 [4] 會像第一次一樣完整編譯。僅在更新核心、編譯異常或需要完整重建時使用。' -ForegroundColor DarkYellow;Write-Host ''
  Write-Host '【客戶端與中文化】' -ForegroundColor Yellow
  Write-Host '[6] 更新 WARP';Write-Host '    下載或更新 WARP 客戶端補丁專案。' -ForegroundColor DarkGray
  Write-Host '[D] 更新 ROenglishRE';Write-Host '    下載或更新 ROenglishRE 英文化資源。' -ForegroundColor DarkGray
