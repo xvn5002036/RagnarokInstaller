@@ -34,10 +34,10 @@ function Find-VisualStudioCppEnvironment {
  return [pscustomobject]@{InstallationPath=$installationPath;MSBuild=$msbuild;SetupScript=$setup;SetupArguments=$setupArgs}
 }
 
-function Test-OfficialVisualStudioProjects {
+function Test-VisualStudioProjects {
  param($Core)
  $solution=Join-Path $Core.Path 'rAthena.sln'
- if(-not(Test-Path $solution)){throw ('找不到 rAthena 官方 Solution：{0}' -f $solution)}
+ if(-not(Test-Path $solution)){throw ('找不到 {0} 的 Visual Studio Solution：{1}' -f $Core.Name,$solution)}
  $required=@(
   'src\login\login-server.vcxproj',
   'src\char\char-server.vcxproj',
@@ -47,20 +47,20 @@ function Test-OfficialVisualStudioProjects {
   '3rdparty\libconfig\libconfig.vcxproj'
  )
  $missing=@($required|Where-Object{-not(Test-Path (Join-Path $Core.Path $_))})
- if($missing.Count){throw ('rAthena 缺少官方 Visual Studio 專案檔：{0}。請重新執行 [3] 下載完整原始碼。' -f ($missing -join '、'))}
+ if($missing.Count){throw ('{0} 缺少必要的 Visual Studio 專案檔：{1}。請重新執行 [3] 下載完整原始碼。' -f $Core.Name,($missing -join '、'))}
  $solutionText=[IO.File]::ReadAllText($solution,[Text.Encoding]::UTF8)
- if($solutionText -notmatch [regex]::Escape('Release|x64')){throw 'rAthena.sln 不含 Release|x64 組態。'}
+ if($solutionText -notmatch [regex]::Escape('Release|x64')){throw ('{0} 的 rAthena.sln 不含 Release|x64 組態。' -f $Core.Name)}
  return $solution
 }
 
-function Ensure-RAthenaRuntimeDependencies {
+function Ensure-RagnarokRuntimeDependencies {
  $runtimeDll=Join-Path $env:WINDIR 'System32\MSVCR110.dll'
  if(Test-Path -LiteralPath $runtimeDll){
   Write-Host '[OK] Visual C++ 2012 x64 Runtime：已安裝' -ForegroundColor Green
   return
  }
 
- Write-Host '[!] rAthena 的 pcre8.dll 需要 MSVCR110.dll。' -ForegroundColor Yellow
+ Write-Host '[!] 伺服器的 pcre8.dll 需要 MSVCR110.dll。' -ForegroundColor Yellow
  Write-Host '[..] 正在安裝 Visual C++ 2012 x64 Runtime（vcredist2012）...' -ForegroundColor Cyan
  $choco=Get-Command choco.exe -ErrorAction SilentlyContinue
  if(-not$choco){throw '缺少 Visual C++ 2012 Runtime，且找不到 Chocolatey。請先執行選項 [1] 安裝開發環境。'}
@@ -150,12 +150,11 @@ function Invoke-MSBuildMonitored {
 
 function Invoke-VisualStudioBuild {
  param([ValidateSet('Build','Clean','Rebuild')][string]$Target='Build')
- # 使用 rAthena 官方 Visual Studio Solution 與 MSBuild。
+ # rAthena 與 PandasWS 都使用相容的 Visual Studio Solution 與 MSBuild 組態。
  $core=Get-CoreInfo
- if($core.Name -ne 'rAthena'){throw '目前的 Visual Studio Solution 編譯流程僅適用 rAthena。請先選擇 rAthena。'}
  if(-not(Test-Path $core.Path)){throw ('核心目錄不存在：{0}' -f $core.Path)}
- Ensure-RAthenaRuntimeDependencies
- $solution=Test-OfficialVisualStudioProjects $core
+ Ensure-RagnarokRuntimeDependencies
+ $solution=Test-VisualStudioProjects $core
  $vs=Find-VisualStudioCppEnvironment
  Write-Host ('[OK] Visual Studio：{0}' -f $vs.InstallationPath) -ForegroundColor Green
  Write-Host ('[OK] MSBuild：{0}' -f $vs.MSBuild) -ForegroundColor Green
@@ -167,7 +166,7 @@ function Invoke-VisualStudioBuild {
 
  # 此指令等同在 Visual Studio 選擇 Release/x64 後執行 Build、Clean 或 Rebuild。
  Invoke-MSBuildMonitored $vs $solution $Target $core.Path
- Write-Host ('[OK] Visual Studio {0} 完成，核心位置：{1}' -f $Target,$core.Path) -ForegroundColor Green
+ Write-Host ('[OK] {0} Visual Studio {1} 完成，核心位置：{2}' -f $core.Name,$Target,$core.Path) -ForegroundColor Green
 }
 
 function Build-RagnarokServer {Invoke-VisualStudioBuild -Target Build}

@@ -139,7 +139,7 @@ OnTimer500:
  Write-Host '[OK] RathenaPlayerAdmin NPC bridge 已建立並加入 scripts_custom.conf。' -ForegroundColor Green
 }
 
-function Initialize-RAthenaConfig {
+function Initialize-ServerConfig {
  Edit-DatabaseConnection; $core=Get-CoreInfo; $base=$core.Path; if(-not(Test-Path $base)){throw ('核心目錄不存在：{0}' -f $base)}
  $tmpl=Join-Path $base 'conf\import-tmpl';$imp=Join-Path $base 'conf\import';if(-not(Test-Path $tmpl)){throw ('找不到：{0}' -f $tmpl)}
  if(-not(Test-Path $imp)){
@@ -195,8 +195,8 @@ function Initialize-RAthenaConfig {
  $communicationAccount=Get-MariaDbScalar ("SELECT CONCAT(userid,'|',user_pass,'|',sex) FROM ``{0}``.login WHERE account_id=1;" -f $d.MainDatabase)
  if($communicationAccount -ne 'froggos1|froggop1|S'){throw ('伺服器通訊帳號驗證失敗：{0}' -f $communicationAccount)}
 
- Write-Host '[OK] UTF-8 BOM 已清除，rAthena 能正確讀取第一行設定。' -ForegroundColor Green
+ Write-Host ('[OK] UTF-8 BOM 已清除，{0} 能正確讀取第一行設定。' -f $core.Name) -ForegroundColor Green
  Write-Host '[OK] 資料庫連線、伺服器通訊帳號及 import 載入設定全部驗證完成。' -ForegroundColor Green
- if(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue){Write-Host '[!] 偵測到伺服器正在執行；請先選 [H] 停止，再選 [C] 重新啟動以載入新設定。' -ForegroundColor Yellow}else{Write-Host '[i] 設定會在下次選擇 [C] 啟動伺服器時生效。' -ForegroundColor Cyan}
+ if(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue){Write-Host ('[!] 偵測到 {0} 正在執行；請先選 [H] 停止，再選 [C] 重新啟動以載入新設定。' -f $core.Name) -ForegroundColor Yellow}else{Write-Host ('[i] 設定會在下次選擇 [C] 啟動 {0} 時生效。' -f $core.Name) -ForegroundColor Cyan}
  Write-Host '[i] PACKETVER 屬於編譯設定；若本次有變更，請先執行 [5] 清除，再執行 [4] 編譯。' -ForegroundColor Cyan
 }
