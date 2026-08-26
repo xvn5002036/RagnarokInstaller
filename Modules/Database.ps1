@@ -4,8 +4,17 @@ function Find-MariaDbClient {
  $hits=Get-ChildItem 'C:\Program Files\MariaDB*\bin\mariadb.exe','C:\Program Files\MariaDB*\bin\mysql.exe' -ErrorAction SilentlyContinue|Select-Object -First 1; if($hits){return $hits.FullName}; throw '找不到 mariadb.exe / mysql.exe。'
 }
 function Invoke-MariaDbSql { param([string]$Sql,[string]$Database='',[string]$InputFile='')
- $d=$script:InstallerConfig.Database; $exe=Find-MariaDbClient; $a=@('-h',$d.HostName,'-P',[string]$d.Port,'-u',$d.UserName,'--ssl=0'); if(-not [string]::IsNullOrEmpty($d.Password)){$a += ('-p{0}' -f $d.Password)}; if($Database){$a += $Database}
- $old=$ErrorActionPreference;$ErrorActionPreference='Continue'; try{ if($InputFile){Get-Content -LiteralPath $InputFile -Raw|& $exe @a 2>&1|Tee-Object -FilePath (Join-Path $script:LogsPath 'SQL.log') -Append|ForEach-Object{Write-Host $_}} else{$Sql|& $exe @a 2>&1|Tee-Object -FilePath (Join-Path $script:LogsPath 'SQL.log') -Append|ForEach-Object{Write-Host $_}}; $code=$LASTEXITCODE }finally{$ErrorActionPreference=$old}; if($code -ne 0){throw ('MariaDB 指令失敗，錯誤碼：{0}' -f $code)}
+ # PandasWS / rAthena 的 SQL 含中文與羅馬數字等 UTF-8 字元；Windows PowerShell 預設會以 ANSI
+ # 管線輸出並破壞它們，最後造成 MariaDB 在看似正常的 VALUES 附近報 1064。
+ $d=$script:InstallerConfig.Database; $exe=Find-MariaDbClient; $a=@('-h',$d.HostName,'-P',[string]$d.Port,'-u',$d.UserName,'--ssl=0','--default-character-set=utf8mb4'); if(-not [string]::IsNullOrEmpty($d.Password)){$a += ('-p{0}' -f $d.Password)}; if($Database){$a += $Database}
+ $old=$ErrorActionPreference;$oldOutputEncoding=$OutputEncoding;$ErrorActionPreference='Continue'
+ try{
+  # 明確使用 UTF-8 將 SQL 送給 MariaDB，確保所有核心的資料檔都可原樣匯入。
+  $OutputEncoding=[System.Text.UTF8Encoding]::new($false)
+  if($InputFile){Get-Content -LiteralPath $InputFile -Raw|& $exe @a 2>&1|Tee-Object -FilePath (Join-Path $script:LogsPath 'SQL.log') -Append|ForEach-Object{Write-Host $_}} else{$Sql|& $exe @a 2>&1|Tee-Object -FilePath (Join-Path $script:LogsPath 'SQL.log') -Append|ForEach-Object{Write-Host $_}}
+  $code=$LASTEXITCODE
+ }finally{$OutputEncoding=$oldOutputEncoding;$ErrorActionPreference=$old}
+ if($code -ne 0){throw ('MariaDB 指令失敗，錯誤碼：{0}' -f $code)}
 }
 
 function Get-MariaDbScalar {
