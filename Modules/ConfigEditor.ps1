@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# rAthena 設定寫入：設定資料庫與伺服器通訊，並安裝 Player Admin 的 NPC 橋接功能。 #>
 function Set-ConfValues { param([string]$FilePath,[System.Collections.IDictionary]$Values)
  if(-not(Test-Path $FilePath)){[IO.File]::WriteAllText($FilePath,'',(New-Object Text.UTF8Encoding($false)))}
  $text=[IO.File]::ReadAllText($FilePath,[Text.Encoding]::UTF8); if($null -eq $text){$text=''}

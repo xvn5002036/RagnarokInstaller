@@ -79,7 +79,7 @@ MariaDB 與資料庫
 - 伺服器資料庫密碼：froggopass
 - 伺服器通訊帳號：froggos1
 - 伺服器通訊密碼：froggop1
-- GM 帳號：test / test，等級 99
+- GM 帳號：test / 123456，等級 99
 
 第 7 項說明
 - 空資料庫會依指定順序完整匯入 SQL。

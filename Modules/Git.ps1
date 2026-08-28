@@ -1,5 +1,6 @@
 ﻿Set-StrictMode -Version 2.0
 
+<# Git 更新：下載、更新與比對 rAthena、WARP、語言資源等 GitHub 專案。 #>
 function Get-GitRepositoryVersionStatus {
  param([Parameter(Mandatory=$true)][string]$RepositoryPath,[Parameter(Mandatory=$true)][string]$Branch)
  if(-not(Test-Command git)){return $null}

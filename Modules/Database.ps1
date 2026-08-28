@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 資料庫操作：呼叫 MariaDB，建立遊戲資料庫並匯入 rAthena 所需 SQL。 #>
 function Find-MariaDbClient {
  $c=Get-Command mariadb.exe -ErrorAction SilentlyContinue; if($c){return $c.Source}; $c=Get-Command mysql.exe -ErrorAction SilentlyContinue; if($c){return $c.Source}
  $hits=Get-ChildItem 'C:\Program Files\MariaDB*\bin\mariadb.exe','C:\Program Files\MariaDB*\bin\mysql.exe' -ErrorAction SilentlyContinue|Select-Object -First 1; if($hits){return $hits.FullName}; throw '找不到 mariadb.exe / mysql.exe。'
@@ -62,7 +63,7 @@ function Initialize-RagnarokDatabase {
  if($importBaseSql){foreach($i in $list){$f=Join-Path $sqlDir $i[0];if(Test-Path $f){Write-Host ('[..] 匯入 {0}' -f $i[0]);Invoke-MariaDbSql '' $i[1] $f}else{Write-Host ('[-] 略過不存在檔案：{0}' -f $i[0]) -ForegroundColor DarkYellow}}}
  $loginTableCount=[int](Get-MariaDbScalar ("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='{0}' AND table_name='login';" -f $mainName))
  if($loginTableCount -eq 0){throw ('{0} 資料庫缺少 login 資料表，可能是先前匯入中斷。請重新執行第 7 項並選擇 [2] 全新建立。' -f $core.Name)}
- $post="UPDATE login SET userid='froggos1', user_pass='froggop1' WHERE account_id=1; INSERT INTO login (account_id,userid,user_pass,sex,email,group_id,state) VALUES (2000000,'test','123456','M','a@a.com',99,0) ON DUPLICATE KEY UPDATE userid='test',user_pass='test',group_id=99,state=0;"
+ $post="UPDATE login SET userid='froggos1', user_pass='froggop1' WHERE account_id=1; INSERT INTO login (account_id,userid,user_pass,sex,email,group_id,state) VALUES (2000000,'test','123456','M','a@a.com',99,0) ON DUPLICATE KEY UPDATE userid='test',user_pass='123456',group_id=99,state=0;"
  Invoke-MariaDbSql $post $d.MainDatabase
  Write-Host ('[OK] {0} 資料庫建立與匯入完成。' -f $core.Name) -ForegroundColor Green
 }

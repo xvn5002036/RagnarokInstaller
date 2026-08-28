@@ -1,5 +1,6 @@
 ﻿Set-StrictMode -Version 2.0
 
+<# 玩家管理後台：準備 .NET 執行環境、寫入連線設定，並啟動網頁管理介面。 #>
 function Write-PlayerAdminSettings {
  param([Parameter(Mandatory=$true)][string]$Path)
  $database=$script:InstallerConfig.Database

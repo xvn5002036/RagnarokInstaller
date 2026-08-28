@@ -1,4 +1,5 @@
 ﻿Set-StrictMode -Version 2.0
+<# 伺服器控制：啟動、停止、移除 Ragnarok 伺服器，及執行一鍵初始化流程。 #>
 function Start-RagnarokServer {
     $core=Get-CoreInfo
     $serverPath = $core.Path

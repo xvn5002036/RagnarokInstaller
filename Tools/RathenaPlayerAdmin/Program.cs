@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
@@ -82,6 +83,18 @@ app.MapGet("/api/characters/{charId:int}/inventory", async (int charId, AdminRep
 
 app.MapGet("/api/accounts/{accountId:int}/storage", async (int accountId, AdminRepository repo) =>
     Results.Ok(await repo.GetItemsAsync("storage", "account_id", accountId)));
+
+app.MapGet("/api/accounts/{accountId:int}/settings", async (int accountId, AdminRepository repo) =>
+{
+    var account = await repo.GetAccountSettingsAsync(accountId);
+    return account is null ? Results.NotFound() : Results.Ok(account);
+});
+
+app.MapPut("/api/accounts/{accountId:int}/settings", async (int accountId, AccountSettingsUpdate input, HttpContext http, AdminRepository repo) =>
+{
+    var result = await repo.UpdateAccountSettingsAsync(accountId, input, GetOperator(http));
+    return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+});
 
 app.MapPut("/api/characters/{charId:int}/stats", async (int charId, CharacterStats input, HttpContext http, AdminRepository repo) =>
 {
@@ -202,6 +215,68 @@ sealed class AdminRepository(IConfiguration configuration, KickService kickServi
             """;
         await using var db = Open();
         return await db.QuerySingleOrDefaultAsync(sql, new { charId });
+    }
+
+    public async Task<AccountSettings?> GetAccountSettingsAsync(int accountId)
+    {
+        const string sql = """
+            SELECT account_id AS AccountId, userid AS UserId, sex AS Sex, email AS Email,
+                   group_id AS GroupId, state AS State, character_slots AS CharacterSlots
+            FROM login WHERE account_id=@accountId;
+            """;
+        await using var db = Open();
+        return await db.QuerySingleOrDefaultAsync<AccountSettings>(sql, new { accountId });
+    }
+
+    public async Task<OperationResult> UpdateAccountSettingsAsync(int accountId, AccountSettingsUpdate input, string admin)
+    {
+        if (!input.IsValid(out var error)) return OperationResult.Fail(error);
+        await using var db = Open();
+        await db.OpenAsync();
+        await using var tx = await db.BeginTransactionAsync();
+        var exists = await db.ExecuteScalarAsync<int?>("SELECT account_id FROM login WHERE account_id=@accountId FOR UPDATE", new { accountId }, tx);
+        if (exists is null) return OperationResult.Fail("找不到帳號。");
+
+        var parameters = new
+        {
+            accountId,
+            input.UserId,
+            input.Sex,
+            input.Email,
+            input.GroupId,
+            input.State,
+            input.CharacterSlots,
+            Password = string.IsNullOrEmpty(input.Password) ? null : FormatPassword(input.Password)
+        };
+        try
+        {
+            await db.ExecuteAsync("""
+                UPDATE login SET userid=@UserId, sex=@Sex, email=@Email, group_id=@GroupId,
+                   state=@State, character_slots=@CharacterSlots,
+                   user_pass=COALESCE(@Password,user_pass)
+                WHERE account_id=@accountId;
+                """, parameters, tx);
+        }
+        catch (MySqlException exception) when (exception.Number == 1062)
+        {
+            return OperationResult.Fail("此帳號名稱已被使用，請改用其他名稱。");
+        }
+        await WriteAuditAsync(db, tx, admin, "account.update", "login", accountId,
+            new { input.UserId, input.Sex, input.Email, input.GroupId, input.State, input.CharacterSlots, PasswordChanged = !string.IsNullOrEmpty(input.Password) });
+        await tx.CommitAsync();
+        return OperationResult.Ok();
+    }
+
+    private string FormatPassword(string password)
+    {
+        var configPath = configuration["Rathena:LoginConfigPath"] ?? @"C:\Server\rAthena\conf\login_athena.conf";
+        try
+        {
+            if (File.Exists(configPath) && Regex.IsMatch(File.ReadAllText(configPath), @"(?im)^\s*use_MD5_passwords\s*:\s*yes\b"))
+                return Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(password))).ToLowerInvariant();
+        }
+        catch { /* Fall back to the plain-text format used by the default rAthena configuration. */ }
+        return password;
     }
 
     public async Task<OperationResult> DeleteCharacterAsync(int charId, string characterName, string admin)
@@ -1018,6 +1093,35 @@ record CloneCharacterRequest(int TargetCharId);
 record ChangeJobRequest(int JobId);
 record WarpRequest(string MapName);
 record DeleteCharacterRequest(string CharacterName);
+record AccountSettings(int AccountId, string UserId, string Sex, string Email, int GroupId, int State, int CharacterSlots);
+record AccountSettingsUpdate(string UserId, string? Password, string Sex, string Email, int GroupId, int State, int CharacterSlots)
+{
+    public bool IsValid(out string error)
+    {
+        if (string.IsNullOrWhiteSpace(UserId) || !Regex.IsMatch(UserId, @"^[A-Za-z0-9_]{4,23}$"))
+        {
+            error = "帳號名稱需為 4 至 23 個英數字或底線。";
+            return false;
+        }
+        if (Password is { Length: > 0 and < 4 or > 32 })
+        {
+            error = "密碼需為 4 至 32 個字元；留空代表不變更密碼。";
+            return false;
+        }
+        if (Sex is not ("M" or "F" or "S"))
+        {
+            error = "性別只能選擇男性、女性或伺服器設定。";
+            return false;
+        }
+        if (Email.Length > 39 || GroupId is < 0 or > 127 || State is < 0 or > 100 || CharacterSlots is < 0 or > 255)
+        {
+            error = "帳號設定數值超出允許範圍。";
+            return false;
+        }
+        error = string.Empty;
+        return true;
+    }
+}
 
 record OperationResult(bool Success, string? Error)
 {
