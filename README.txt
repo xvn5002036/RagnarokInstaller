@@ -37,6 +37,13 @@
 [J] 啟動 RathenaPlayerAdmin 玩家管理後台（只啟動，不下載）
 [0] 離開
 
+第 3 項官方同步方式
+- 選擇 rAthena 時固定同步 https://github.com/rathena/rathena.git 的 master 分支。
+- 選擇 PandasWS 時固定同步 https://github.com/PandasWS/Pandas.git 的 master 分支。
+- 既有資料夾會先校正 origin 網址，再 fetch 官方最新提交並將已追蹤檔案對齊官方版本。
+- 若專案包含 Git 子模組，會同步並更新全部子模組。
+- 未追蹤檔案（例如自行新增但尚未加入 Git 的 NPC 腳本）不會被刪除。
+
 玩家管理後台
 - 後台原始碼收錄於 Tools\RathenaPlayerAdmin；按 [I] 會更新至 C:\Server\RathenaPlayerAdmin，不會覆蓋 rAthena 或 PandasWS 核心。
 - 更新安裝器後再按 [I]，即可套用內建的最新版；所需 Microsoft .NET 8 SDK 統一由選項 [1] 管理。
