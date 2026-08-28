@@ -35,10 +35,10 @@ function Find-VisualStudioCppEnvironment {
  return [pscustomobject]@{InstallationPath=$installationPath;MSBuild=$msbuild;SetupScript=$setup;SetupArguments=$setupArgs}
 }
 
-function Test-OfficialVisualStudioProjects {
+function Test-VisualStudioProjects {
  param($Core)
  $solution=Join-Path $Core.Path 'rAthena.sln'
- if(-not(Test-Path $solution)){throw ('找不到 rAthena 官方 Solution：{0}' -f $solution)}
+ if(-not(Test-Path $solution)){throw ('找不到 {0} 的 Visual Studio Solution：{1}' -f $Core.Name,$solution)}
  $required=@(
   'src\login\login-server.vcxproj',
   'src\char\char-server.vcxproj',
@@ -48,20 +48,20 @@ function Test-OfficialVisualStudioProjects {
   '3rdparty\libconfig\libconfig.vcxproj'
  )
  $missing=@($required|Where-Object{-not(Test-Path (Join-Path $Core.Path $_))})
- if($missing.Count){throw ('rAthena 缺少官方 Visual Studio 專案檔：{0}。請重新執行 [3] 下載完整原始碼。' -f ($missing -join '、'))}
+ if($missing.Count){throw ('{0} 缺少必要的 Visual Studio 專案檔：{1}。請重新執行 [3] 下載完整原始碼。' -f $Core.Name,($missing -join '、'))}
  $solutionText=[IO.File]::ReadAllText($solution,[Text.Encoding]::UTF8)
- if($solutionText -notmatch [regex]::Escape('Release|x64')){throw 'rAthena.sln 不含 Release|x64 組態。'}
+ if($solutionText -notmatch [regex]::Escape('Release|x64')){throw ('{0} 的 rAthena.sln 不含 Release|x64 組態。' -f $Core.Name)}
  return $solution
 }
 
-function Ensure-RAthenaRuntimeDependencies {
+function Ensure-RagnarokRuntimeDependencies {
  $runtimeDll=Join-Path $env:WINDIR 'System32\MSVCR110.dll'
  if(Test-Path -LiteralPath $runtimeDll){
   Write-Host '[OK] Visual C++ 2012 x64 Runtime：已安裝' -ForegroundColor Green
   return
  }
 
- Write-Host '[!] rAthena 的 pcre8.dll 需要 MSVCR110.dll。' -ForegroundColor Yellow
+ Write-Host '[!] 伺服器的 pcre8.dll 需要 MSVCR110.dll。' -ForegroundColor Yellow
  Write-Host '[..] 正在安裝 Visual C++ 2012 x64 Runtime（vcredist2012）...' -ForegroundColor Cyan
  $choco=Get-Command choco.exe -ErrorAction SilentlyContinue
  if(-not$choco){throw '缺少 Visual C++ 2012 Runtime，且找不到 Chocolatey。請先執行選項 [1] 安裝開發環境。'}
@@ -151,12 +151,11 @@ function Invoke-MSBuildMonitored {
 
 function Invoke-VisualStudioBuild {
  param([ValidateSet('Build','Clean','Rebuild')][string]$Target='Build')
- # 使用 rAthena 官方 Visual Studio Solution 與 MSBuild。
+ # rAthena 與 PandasWS 都使用相容的 Visual Studio Solution 與 MSBuild 組態。
  $core=Get-CoreInfo
- if($core.Name -ne 'rAthena'){throw '目前的 Visual Studio Solution 編譯流程僅適用 rAthena。請先選擇 rAthena。'}
  if(-not(Test-Path $core.Path)){throw ('核心目錄不存在：{0}' -f $core.Path)}
- Ensure-RAthenaRuntimeDependencies
- $solution=Test-OfficialVisualStudioProjects $core
+ Ensure-RagnarokRuntimeDependencies
+ $solution=Test-VisualStudioProjects $core
  $vs=Find-VisualStudioCppEnvironment
  Write-Host ('[OK] Visual Studio：{0}' -f $vs.InstallationPath) -ForegroundColor Green
  Write-Host ('[OK] MSBuild：{0}' -f $vs.MSBuild) -ForegroundColor Green
@@ -168,8 +167,47 @@ function Invoke-VisualStudioBuild {
 
  # 此指令等同在 Visual Studio 選擇 Release/x64 後執行 Build、Clean 或 Rebuild。
  Invoke-MSBuildMonitored $vs $solution $Target $core.Path
- Write-Host ('[OK] Visual Studio {0} 完成，核心位置：{1}' -f $Target,$core.Path) -ForegroundColor Green
+ Write-Host ('[OK] {0} Visual Studio {1} 完成，核心位置：{2}' -f $core.Name,$Target,$core.Path) -ForegroundColor Green
 }
 
-function Build-RagnarokServer {Invoke-VisualStudioBuild -Target Build}
-function Clear-RagnarokBuild {Invoke-VisualStudioBuild -Target Clean}
+function Build-RagnarokServer {
+ Write-Host '[i] 正在進行快速增量編譯：MSBuild 會自動重新編譯所有已修改及受影響的檔案。' -ForegroundColor Cyan
+ Write-Host '[i] 一般修改程式後請直接按 [4]；不必先按 [5]，產出的伺服器執行檔結果相同。' -ForegroundColor Cyan
+ Invoke-VisualStudioBuild -Target Build
+}
+function Remove-RagnarokBuildArtifacts {
+ param([Parameter(Mandatory=$true)][string]$CorePath)
+ $resolvedCore=[IO.Path]::GetFullPath($CorePath).TrimEnd('\')
+ if(-not(Test-Path -LiteralPath $resolvedCore -PathType Container)){throw ('核心目錄不存在：{0}' -f $resolvedCore)}
+ # 不可在伺服器使用檔案時清除，避免留下半套執行檔。
+ $running=@(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue)
+ if($running.Count){throw '伺服器仍在執行中。請先按 [H] 停止伺服器，再執行 [5]。'}
+
+ $removed=0
+ # rAthena / PandasWS 會將這些編譯輸出放在核心根目錄；不包含 pcre8.dll、libmysql.dll
+ # 等下載原始碼本身提供的必要執行期 DLL。
+ $artifactExtensions=@('.exe','.pdb','.ilk','.lib','.exp')
+ foreach($file in @(Get-ChildItem -LiteralPath $resolvedCore -File -Force | Where-Object {$artifactExtensions -contains $_.Extension.ToLowerInvariant()})){
+  Remove-Item -LiteralPath $file.FullName -Force
+  $removed++
+ }
+ # Visual Studio 的中間檔在每個專案的 .vs\build 內；僅刪除此明確的編譯快取目錄，
+ # 不碰 .vs 其他使用者設定，也不碰任何原始碼目錄。
+ $buildDirectories=@(Get-ChildItem -LiteralPath $resolvedCore -Directory -Recurse -Force | Where-Object {
+  $_.Name -eq 'build' -and $_.Parent.Name -eq '.vs' -and $_.FullName.StartsWith($resolvedCore+'\',[StringComparison]::OrdinalIgnoreCase)
+ })
+ foreach($directory in $buildDirectories){
+  Remove-Item -LiteralPath $directory.FullName -Recurse -Force
+  $removed++
+ }
+ Write-Host ('[OK] 已移除 {0} 個編譯產物／快取目錄；核心已回到未編譯狀態。' -f $removed) -ForegroundColor Green
+}
+function Clear-RagnarokBuild {
+ $core=Get-CoreInfo
+ Write-Host '[!] 此操作會將目前核心還原成「未編譯」狀態，下一次 [4] 將進行完整編譯。' -ForegroundColor Yellow
+ Write-Host '[i] 會清除伺服器 EXE、PDB、LIB、EXP 與 .vs\build 中間檔；不會刪除原始碼、設定或資料庫。' -ForegroundColor Cyan
+ $confirmation=Read-Host ('確定清除 {0} 的所有編譯產物？輸入 CLEAN 確認' -f $core.Name)
+ if($confirmation -ne 'CLEAN'){Write-Host '[-] 已取消清除，保留快速增量編譯快取。' -ForegroundColor DarkYellow;return}
+ Invoke-VisualStudioBuild -Target Clean
+ Remove-RagnarokBuildArtifacts -CorePath $core.Path
+}

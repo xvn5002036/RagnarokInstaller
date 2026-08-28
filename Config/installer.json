@@ -1,6 +1,7 @@
 ﻿{
-    "SchemaVersion":  3,
+    "SchemaVersion":  4,
     "Emulator":  "rAthena",
+    "CoreSelectionCompleted": false,
     "RootPath":  "C:\\Server",
     "RAthenaPath":  "C:\\Server\\rAthena",
     "PandasWSPath":  "C:\\Server\\PandasWS",

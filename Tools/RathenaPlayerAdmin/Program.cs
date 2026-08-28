@@ -10,25 +10,29 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase);
 builder.Services.AddSingleton<AdminRepository>();
 builder.Services.AddSingleton<KickService>();
+var configuredCorePath = builder.Configuration["Rathena:CorePath"];
+var configuredCoreCandidates = string.IsNullOrWhiteSpace(configuredCorePath)
+    ? Array.Empty<string>()
+    : new[] { configuredCorePath };
 var atCommandCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "atcommands.txt"),
     Path.Combine(builder.Environment.ContentRootPath, "doc", "atcommands.txt"),
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "doc", "atcommands.txt")),
-    @"C:\Server\rAthena\doc\atcommands.txt"
-};
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "doc", "atcommands.txt"))
+}.Concat(configuredCoreCandidates.Select(path => Path.Combine(path, "doc", "atcommands.txt")))
+ .Append(@"C:\Server\rAthena\doc\atcommands.txt").ToArray();
 var jobDefinitionCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "mmo.hpp"),
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "src", "common", "mmo.hpp")),
-    @"C:\Server\rAthena\src\common\mmo.hpp"
-};
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "src", "common", "mmo.hpp"))
+}.Concat(configuredCoreCandidates.Select(path => Path.Combine(path, "src", "common", "mmo.hpp")))
+ .Append(@"C:\Server\rAthena\src\common\mmo.hpp").ToArray();
 var mapIndexCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "map_index.txt"),
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "map_index.txt")),
-    @"C:\Server\rAthena\db\map_index.txt"
-};
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "map_index.txt"))
+}.Concat(configuredCoreCandidates.Select(path => Path.Combine(path, "db", "map_index.txt")))
+ .Append(@"C:\Server\rAthena\db\map_index.txt").ToArray();
 var mapInfoCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "mapInfo_true.lub"),
@@ -38,15 +42,15 @@ var mapInfoCandidates = new[]
 var mobDatabaseCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "mob_db.yml"),
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "re", "mob_db.yml")),
-    @"C:\Server\rAthena\db\re\mob_db.yml"
-};
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "db", "re", "mob_db.yml"))
+}.Concat(configuredCoreCandidates.Select(path => Path.Combine(path, "db", "re", "mob_db.yml")))
+ .Append(@"C:\Server\rAthena\db\re\mob_db.yml").ToArray();
 var mobSpawnDirectoryCandidates = new[]
 {
     Path.Combine(builder.Environment.ContentRootPath, "npc", "re", "mobs"),
-    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "npc", "re", "mobs")),
-    @"C:\Server\rAthena\npc\re\mobs"
-};
+    Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "npc", "re", "mobs"))
+}.Concat(configuredCoreCandidates.Select(path => Path.Combine(path, "npc", "re", "mobs")))
+ .Append(@"C:\Server\rAthena\npc\re\mobs").ToArray();
 builder.Services.AddSingleton(new AtCommandCatalog(atCommandCandidates.FirstOrDefault(File.Exists)));
 builder.Services.AddSingleton(new JobCatalog(jobDefinitionCandidates.FirstOrDefault(File.Exists)));
 builder.Services.AddSingleton(new MonsterCatalog(mobDatabaseCandidates.FirstOrDefault(File.Exists), mobSpawnDirectoryCandidates.FirstOrDefault(Directory.Exists)));
@@ -415,8 +419,8 @@ sealed class AdminRepository(IConfiguration configuration, KickService kickServi
     public async Task<OperationResult> QueueJobChangeAsync(int charId, int jobId, string admin)
     {
         var job = jobCatalog.Jobs.FirstOrDefault(entry => entry.Id == jobId);
-        if (job is null) return OperationResult.Fail("此職業 ID 不存在於目前的 rAthena 版本。");
-        if (!job.Selectable) return OperationResult.Fail("rAthena 的 @jobchange 不允許直接切換到此活動／外觀變體職業。");
+        if (job is null) return OperationResult.Fail("此職業 ID 不存在於目前核心版本。");
+        if (!job.Selectable) return OperationResult.Fail("目前核心的 @jobchange 不允許直接切換到此活動／外觀變體職業。");
 
         await using var db = Open();
         await db.OpenAsync();
@@ -455,7 +459,7 @@ sealed class AdminRepository(IConfiguration configuration, KickService kickServi
     public async Task<OperationResult> QueueWarpAsync(int charId, string mapName, string admin)
     {
         mapName = mapName.Trim();
-        if (!mapCatalog.Contains(mapName)) return OperationResult.Fail("此地圖不存在於目前的 rAthena 地圖清單。");
+        if (!mapCatalog.Contains(mapName)) return OperationResult.Fail("此地圖不存在於目前核心的地圖清單。");
 
         await using var db = Open();
         await db.OpenAsync();

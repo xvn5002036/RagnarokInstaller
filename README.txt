@@ -19,7 +19,7 @@
 [2] 安裝 / 更新 MariaDB
 [3] 更新 rAthena / PandasWS
 [4] 編譯目前核心
-[5] 清除目前核心的編譯結果（需要重新編譯時再執行 [4]）
+[5] 還原目前核心為未編譯狀態（通常不需要；會清除伺服器 EXE 與編譯快取，下一次 [4] 會完整編譯）
 [6] 更新 WARP
 [7] 建立 / 匯入資料庫
 [8] 初始化 rAthena 設定
@@ -36,6 +36,14 @@
 [I] 安裝 / 更新 RathenaPlayerAdmin 玩家管理後台（套用內建最新版並準備 .NET 環境）
 [J] 啟動 RathenaPlayerAdmin 玩家管理後台（只啟動，不下載）
 [0] 離開
+
+第 3 項官方同步方式
+- 選擇 rAthena 時固定同步 https://github.com/rathena/rathena.git 的 master 分支。
+- 選擇 PandasWS 時固定同步 https://github.com/PandasWS/Pandas.git 的 master 分支。
+- 既有資料夾會先校正 origin 網址，再 fetch 官方最新提交並將已追蹤檔案對齊官方版本。
+- 若專案包含 Git 子模組，會同步並更新全部子模組。
+- 未追蹤檔案（例如自行新增但尚未加入 Git 的 NPC 腳本）不會被刪除。
+- 主畫面上方會顯示核心分支、Commit、提交日期與官方同步狀態；第 3 項完成後可立即確認更新版本。
 
 玩家管理後台
 - 後台原始碼收錄於 Tools\RathenaPlayerAdmin；按 [I] 會更新至 C:\Server\RathenaPlayerAdmin，不會覆蓋 rAthena 或 PandasWS 核心。
@@ -58,7 +66,7 @@
 編譯方式
 - 使用 rAthena 官方 rAthena.sln。
 - Visual Studio 2022 MSBuild，Release | x64。
-- 選項 [4] 執行 Build；選項 [5] 只執行 Clean，不使用自訂 build 資料夾。
+- 選項 [4] 執行增量 Build：程式修改後直接使用，MSBuild 只會重新編譯已變更和相依檔案，產出與完整編譯相同。選項 [5] 會清除核心根目錄的編譯 EXE / PDB / LIB / EXP 與 `.vs\\build` 快取，讓核心回到未編譯狀態；僅在核心更新、編譯異常或需要完整重建時使用。
 - login-server.exe、char-server.exe、map-server.exe、web-server.exe 位於 C:\Server\rAthena。
 - 編譯畫面會持續顯示 MSBuild PID、耗時及編譯／連結狀態。
 
@@ -71,7 +79,7 @@ MariaDB 與資料庫
 - 伺服器資料庫密碼：froggopass
 - 伺服器通訊帳號：froggos1
 - 伺服器通訊密碼：froggop1
-- GM 帳號：test / test，等級 99
+- GM 帳號：test / 123456，等級 99
 
 第 7 項說明
 - 空資料庫會依指定順序完整匯入 SQL。
