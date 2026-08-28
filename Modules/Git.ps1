@@ -1,5 +1,19 @@
 ﻿Set-StrictMode -Version 2.0
 
+function Get-GitRepositoryVersionStatus {
+ param([Parameter(Mandatory=$true)][string]$RepositoryPath,[Parameter(Mandatory=$true)][string]$Branch)
+ if(-not(Test-Command git)){return $null}
+ if(-not(Test-Path -LiteralPath (Join-Path $RepositoryPath '.git'))){return $null}
+ $localCommit=([string](& git -C $RepositoryPath rev-parse --short=10 HEAD 2>$null)).Trim()
+ if([string]::IsNullOrWhiteSpace($localCommit)){return $null}
+ $currentBranch=([string](& git -C $RepositoryPath branch --show-current 2>$null)).Trim()
+ if([string]::IsNullOrWhiteSpace($currentBranch)){$currentBranch='detached'}
+ $commitDate=([string](& git -C $RepositoryPath show -s --format=%ci HEAD 2>$null)).Trim()
+ $remoteCommit=([string](& git -C $RepositoryPath rev-parse --short=10 ("origin/{0}" -f $Branch) 2>$null)).Trim()
+ $synchronized=(-not[string]::IsNullOrWhiteSpace($remoteCommit))-and($localCommit -eq $remoteCommit)-and($currentBranch -eq $Branch)
+ return [pscustomobject]@{Branch=$currentBranch;Commit=$localCommit;CommitDate=$commitDate;RemoteCommit=$remoteCommit;Synchronized=$synchronized}
+}
+
 function ConvertTo-GitBashArgument {
  param([Parameter(Mandatory=$true)][string]$Value)
  # The installer repository URLs and destination paths are configuration values;

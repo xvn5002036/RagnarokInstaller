@@ -43,6 +43,7 @@
 - 既有資料夾會先校正 origin 網址，再 fetch 官方最新提交並將已追蹤檔案對齊官方版本。
 - 若專案包含 Git 子模組，會同步並更新全部子模組。
 - 未追蹤檔案（例如自行新增但尚未加入 Git 的 NPC 腳本）不會被刪除。
+- 主畫面上方會顯示核心分支、Commit、提交日期與官方同步狀態；第 3 項完成後可立即確認更新版本。
 
 玩家管理後台
 - 後台原始碼收錄於 Tools\RathenaPlayerAdmin；按 [I] 會更新至 C:\Server\RathenaPlayerAdmin，不會覆蓋 rAthena 或 PandasWS 核心。

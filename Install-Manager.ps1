@@ -11,6 +11,14 @@ function Show-MainMenu {
  Write-Host '========================================================' -ForegroundColor Cyan
  Write-Host ('程式位置：{0}' -f $script:AppPath) -ForegroundColor DarkGray
  Write-Host ('目前核心：{0}    安裝位置：{1}' -f $core.Name,$core.Path)
+ $managerVersion=if(Test-Path -LiteralPath (Join-Path $script:AppPath 'VERSION.txt')){([IO.File]::ReadAllText((Join-Path $script:AppPath 'VERSION.txt'))).Trim()}else{'未知'}
+ Write-Host ('管理中心版本：{0}' -f $managerVersion) -ForegroundColor DarkGray
+ $coreVersion=Get-GitRepositoryVersionStatus -RepositoryPath $core.Path -Branch $core.Repo.Branch
+ if($coreVersion){
+  Write-Host ('核心 Git 版本：{0} @ {1}    提交日期：{2}' -f $coreVersion.Branch,$coreVersion.Commit,$coreVersion.CommitDate)
+  if($coreVersion.Synchronized){Write-Host ('官方同步狀態：[OK] 已拉取完成（origin/{0} @ {1}）' -f $core.Repo.Branch,$coreVersion.RemoteCommit) -ForegroundColor Green}
+  else{Write-Host ('官方同步狀態：[!] 本機版本尚未對齊 origin/{0}，請執行 [3]。' -f $core.Repo.Branch) -ForegroundColor Yellow}
+ }else{Write-Host '核心 Git 版本：尚未下載或無法讀取' -ForegroundColor DarkYellow}
  if(-not[string]::IsNullOrWhiteSpace($script:MenuNotice)){Write-Host ('最新狀態：{0}' -f $script:MenuNotice) -ForegroundColor Green;Write-Host '';$script:MenuNotice=''}
  Write-Host '';Show-CompactSystemStatus;Write-Host ''
  Write-Host '【環境管理】' -ForegroundColor Yellow
