@@ -54,6 +54,29 @@ function Test-VisualStudioProjects {
  return $solution
 }
 
+function Get-RagnarokSourceFingerprint {
+ param([Parameter(Mandatory=$true)][string]$CorePath)
+ $sourcePath=Join-Path $CorePath 'src'
+ if(-not(Test-Path -LiteralPath $sourcePath -PathType Container)){throw ('找不到核心原始碼目錄：{0}' -f $sourcePath)}
+ $extensions=@('.c','.cc','.cpp','.cxx','.h','.hh','.hpp','.hxx','.inl')
+ $lines=Get-ChildItem -LiteralPath $sourcePath -Recurse -File -Force |
+  Where-Object {$extensions -contains $_.Extension.ToLowerInvariant()} |
+  Sort-Object FullName |
+  ForEach-Object {
+   $relative=$_.FullName.Substring($CorePath.TrimEnd('\').Length).TrimStart('\')
+   '{0}|{1}|{2}' -f $relative,$_.Length,$_.LastWriteTimeUtc.Ticks
+  }
+ $text=$lines -join "`n"
+ $sha=[Security.Cryptography.SHA256]::Create()
+ try{$hash=$sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($text))}finally{$sha.Dispose()}
+ return ([BitConverter]::ToString($hash)).Replace('-','').ToLowerInvariant()
+}
+
+function Get-RagnarokBuildFingerprintPath {
+ param([Parameter(Mandatory=$true)][string]$CorePath)
+ return Join-Path $CorePath '.vs\installer-source-state.txt'
+}
+
 function Ensure-RagnarokRuntimeDependencies {
  $runtimeDll=Join-Path $env:WINDIR 'System32\MSVCR110.dll'
  if(Test-Path -LiteralPath $runtimeDll){
@@ -171,9 +194,24 @@ function Invoke-VisualStudioBuild {
 }
 
 function Build-RagnarokServer {
- Write-Host '[i] 正在進行快速增量編譯：MSBuild 會自動重新編譯所有已修改及受影響的檔案。' -ForegroundColor Cyan
- Write-Host '[i] 一般修改程式後請直接按 [4]；不必先按 [5]，產出的伺服器執行檔結果相同。' -ForegroundColor Cyan
- Invoke-VisualStudioBuild -Target Build
+ $core=Get-CoreInfo
+ if(-not(Test-Path -LiteralPath $core.Path -PathType Container)){throw ('核心目錄不存在：{0}' -f $core.Path)}
+ $fingerprintPath=Get-RagnarokBuildFingerprintPath -CorePath $core.Path
+ $currentFingerprint=Get-RagnarokSourceFingerprint -CorePath $core.Path
+ $previousFingerprint=if(Test-Path -LiteralPath $fingerprintPath){([IO.File]::ReadAllText($fingerprintPath)).Trim()}else{''}
+ if(-not$previousFingerprint -or $previousFingerprint-ne$currentFingerprint){
+  Write-Host '[!] 偵測到 src 原始碼已新增、修改或尚未建立編譯指紋。' -ForegroundColor Yellow
+  Write-Host '[..] 為避免 Visual Studio 舊快取誤判，本次自動執行可靠的完整重新編譯。' -ForegroundColor Cyan
+  Invoke-VisualStudioBuild -Target Rebuild
+ }else{
+  Write-Host '[i] src 原始碼未變更，執行快速增量編譯檢查。' -ForegroundColor Cyan
+  Invoke-VisualStudioBuild -Target Build
+ }
+ $completedFingerprint=Get-RagnarokSourceFingerprint -CorePath $core.Path
+ $fingerprintDirectory=Split-Path -Parent $fingerprintPath
+ if(-not(Test-Path -LiteralPath $fingerprintDirectory)){New-Item -ItemType Directory -Path $fingerprintDirectory -Force|Out-Null}
+ [IO.File]::WriteAllText($fingerprintPath,$completedFingerprint,[Text.UTF8Encoding]::new($false))
+ Write-Host '[OK] 已記錄本次 src 編譯指紋；下次可正確判斷原始碼是否變更。' -ForegroundColor Green
 }
 function Remove-RagnarokBuildArtifacts {
  param([Parameter(Mandatory=$true)][string]$CorePath)

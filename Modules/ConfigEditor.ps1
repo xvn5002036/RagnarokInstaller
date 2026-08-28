@@ -158,22 +158,25 @@ function Initialize-ServerConfig {
   }
   Write-Host '[OK] conf\import 已存在，只補上缺少的範本檔案。' -ForegroundColor Green
  }
- $packet=Join-Path $base 'src\config\packets.hpp'
- if(-not(Test-Path $packet)){throw ('找不到 PACKETVER 設定檔：{0}' -f $packet)}
+ # 依 rAthena 官方指示，Windows 自訂 PACKETVER 寫在 src/custom/defines_pre.hpp；
+ # 不直接修改 src/config/packets.hpp，避免 Git 更新官方原始碼時被覆蓋。
+ $packet=Join-Path $base 'src\custom\defines_pre.hpp'
+ if(-not(Test-Path $packet)){throw ('找不到 PACKETVER 自訂設定檔：{0}' -f $packet)}
  $packetText=[IO.File]::ReadAllText($packet,[Text.Encoding]::UTF8)
  $packetPattern='(?m)^\s*#define\s+PACKETVER\s+\d+'
- if(-not[regex]::IsMatch($packetText,$packetPattern)){throw 'packets.hpp 找不到 #define PACKETVER。'}
  $packetReplacement='#define PACKETVER {0}' -f $script:InstallerConfig.PacketVersion
- $updatedPacketText=[regex]::Replace($packetText,$packetPattern,$packetReplacement)
+ if([regex]::IsMatch($packetText,$packetPattern)){$updatedPacketText=[regex]::Replace($packetText,$packetPattern,$packetReplacement)}else{$updatedPacketText=[regex]::Replace($packetText,'(?m)^#endif\s*/\* CONFIG_CUSTOM_DEFINES_PRE_HPP \*/',$packetReplacement+"`r`n`r`n#endif /* CONFIG_CUSTOM_DEFINES_PRE_HPP */")}
+ if($updatedPacketText-eq$packetText -and -not[regex]::IsMatch($packetText,$packetPattern)){throw 'defines_pre.hpp 找不到可寫入 PACKETVER 的位置。'}
  if($updatedPacketText -ne $packetText){
   [IO.File]::WriteAllText($packet,$updatedPacketText,(New-Object Text.UTF8Encoding($true)))
-  Write-Host ('[OK] packets.hpp 的 PACKETVER 已修改為 {0}。' -f $script:InstallerConfig.PacketVersion) -ForegroundColor Green
+  Write-Host ('[OK] src/custom/defines_pre.hpp 的 PACKETVER 已修改為 {0}。' -f $script:InstallerConfig.PacketVersion) -ForegroundColor Green
  }else{
-  Write-Host ('[OK] packets.hpp 的 PACKETVER 已是 {0}，不需重寫。' -f $script:InstallerConfig.PacketVersion) -ForegroundColor Green
+  Write-Host ('[OK] src/custom/defines_pre.hpp 的 PACKETVER 已是 {0}，不需重寫。' -f $script:InstallerConfig.PacketVersion) -ForegroundColor Green
  }
  $d=$script:InstallerConfig.Database
  $inter=[ordered]@{login_server_ip=$d.HostName;login_server_port=$d.Port;login_server_id=$d.ServerUserName;login_server_pw=$d.ServerPassword;login_server_db=$d.MainDatabase;ipban_db_ip=$d.HostName;ipban_db_port=$d.Port;ipban_db_id=$d.ServerUserName;ipban_db_pw=$d.ServerPassword;ipban_db_db=$d.MainDatabase;char_server_ip=$d.HostName;char_server_port=$d.Port;char_server_id=$d.ServerUserName;char_server_pw=$d.ServerPassword;char_server_db=$d.MainDatabase;map_server_ip=$d.HostName;map_server_port=$d.Port;map_server_id=$d.ServerUserName;map_server_pw=$d.ServerPassword;map_server_db=$d.MainDatabase;web_server_ip=$d.HostName;web_server_port=$d.Port;web_server_id=$d.ServerUserName;web_server_pw=$d.ServerPassword;web_server_db=$d.WebDatabase;log_db_ip=$d.HostName;log_db_port=$d.Port;log_db_id=$d.ServerUserName;log_db_pw=$d.ServerPassword;log_db_db=$d.LogDatabase}
- Set-ConfValues (Join-Path $imp 'inter_conf.txt') $inter; Set-ConfValues (Join-Path $imp 'map_conf.txt') ([ordered]@{userid='froggos1';passwd='froggop1';console='on'}); Set-ConfValues (Join-Path $imp 'char_conf.txt') ([ordered]@{userid='froggos1';passwd='froggop1';char_del_delay='0';pincode_enabled='no';char_moves_unlimited='yes'}); Set-ConfValues (Join-Path $imp 'login_conf.txt') ([ordered]@{new_acc_length_limit='no'})
+ $webApi=$script:InstallerConfig.WebApi
+ Set-ConfValues (Join-Path $imp 'inter_conf.txt') $inter; Set-ConfValues (Join-Path $imp 'map_conf.txt') ([ordered]@{userid='froggos1';passwd='froggop1';console='on'}); Set-ConfValues (Join-Path $imp 'char_conf.txt') ([ordered]@{userid='froggos1';passwd='froggop1';char_del_delay='0';pincode_enabled='no';char_moves_unlimited='yes'}); Set-ConfValues (Join-Path $imp 'login_conf.txt') ([ordered]@{new_acc_length_limit='no';use_web_auth_token='yes'}); Set-ConfValues (Join-Path $imp 'web_conf.txt') ([ordered]@{bind_ip=$webApi.BindAddress;web_port=$webApi.Port})
  Convert-RAthenaImportFilesToUtf8NoBom $imp
  Install-DotNetAdminBridge $base
 
@@ -181,6 +184,7 @@ function Initialize-ServerConfig {
  Assert-RAthenaImportReference (Join-Path $base 'conf\char_athena.conf') 'conf/import/char_conf.txt'
  Assert-RAthenaImportReference (Join-Path $base 'conf\map_athena.conf') 'conf/import/map_conf.txt'
  Assert-RAthenaImportReference (Join-Path $base 'conf\login_athena.conf') 'conf/import/login_conf.txt'
+ Assert-RAthenaImportReference (Join-Path $base 'conf\web_athena.conf') 'conf/import/web_conf.txt'
  Assert-RAthenaConfValue (Join-Path $imp 'inter_conf.txt') 'login_server_id' $d.ServerUserName
  Assert-RAthenaConfValue (Join-Path $imp 'inter_conf.txt') 'log_db_db' $d.LogDatabase
  Assert-RAthenaConfValue (Join-Path $imp 'char_conf.txt') 'userid' 'froggos1'
@@ -188,6 +192,9 @@ function Initialize-ServerConfig {
  Assert-RAthenaConfValue (Join-Path $imp 'map_conf.txt') 'userid' 'froggos1'
  Assert-RAthenaConfValue (Join-Path $imp 'map_conf.txt') 'passwd' 'froggop1'
  Assert-RAthenaConfValue (Join-Path $imp 'map_conf.txt') 'console' 'on'
+ Assert-RAthenaConfValue (Join-Path $imp 'login_conf.txt') 'use_web_auth_token' 'yes'
+ Assert-RAthenaConfValue (Join-Path $imp 'web_conf.txt') 'bind_ip' $webApi.BindAddress
+ Assert-RAthenaConfValue (Join-Path $imp 'web_conf.txt') 'web_port' ([string]$webApi.Port)
 
  $mainName=$d.MainDatabase.Replace("'","''")
  $loginTableCount=[int](Get-MariaDbScalar ("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='{0}' AND table_name='login';" -f $mainName))
@@ -198,6 +205,7 @@ function Initialize-ServerConfig {
 
  Write-Host ('[OK] UTF-8 BOM 已清除，{0} 能正確讀取第一行設定。' -f $core.Name) -ForegroundColor Green
  Write-Host '[OK] 資料庫連線、伺服器通訊帳號及 import 載入設定全部驗證完成。' -ForegroundColor Green
+ Write-Host ('[OK] 遊戲 Web API 本機測試網址：{0}' -f $webApi.PublicUrl) -ForegroundColor Green
  if(Get-Process -Name 'login-server','char-server','map-server','web-server' -ErrorAction SilentlyContinue){Write-Host ('[!] 偵測到 {0} 正在執行；請先選 [H] 停止，再選 [C] 重新啟動以載入新設定。' -f $core.Name) -ForegroundColor Yellow}else{Write-Host ('[i] 設定會在下次選擇 [C] 啟動 {0} 時生效。' -f $core.Name) -ForegroundColor Cyan}
  Write-Host '[i] PACKETVER 屬於編譯設定；若本次有變更，直接執行 [4]，系統會自動編譯受影響檔案。' -ForegroundColor Cyan
 }
